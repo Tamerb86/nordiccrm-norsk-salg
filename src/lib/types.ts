@@ -159,16 +159,27 @@ export interface CustomTemplateVariable {
 
 export type ApiKeyPermission = 'read' | 'write' | 'delete' | 'admin'
 
+export type ApiKeyResource = 'contacts' | 'deals' | 'tasks' | 'emails' | 'webhooks' | 'reports' | 'all'
+
+export interface ResourcePermission {
+  resource: ApiKeyResource
+  actions: ApiKeyPermission[]
+}
+
 export interface ApiKey {
   id: string
   name: string
   key: string
   permissions: ApiKeyPermission[]
+  resourcePermissions?: ResourcePermission[]
+  rateLimit?: number
+  ipWhitelist?: string[]
   lastUsedAt?: string
   expiresAt?: string
   isActive: boolean
   createdAt: string
   updatedAt: string
+  description?: string
 }
 
 export type WebhookEvent = 
