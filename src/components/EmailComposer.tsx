@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   PaperPlaneRight,
@@ -7,7 +7,9 @@ import {
   Clock,
   Eye,
   FloppyDisk,
-  ListBullets
+  ListBullets,
+  File,
+  Trash
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -21,7 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import type { Email, EmailTemplate, Contact, Activity } from '@/lib/types'
+import type { Email, EmailTemplate, Contact, Activity, EmailAttachment } from '@/lib/types'
 
 interface EmailComposerProps {
   isOpen: boolean
@@ -58,6 +60,9 @@ export default function EmailComposer({
   const [saveAsTemplate, setSaveAsTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [attachments, setAttachments] = useState<EmailAttachment[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const safeContacts = contacts || []
   const safeEmails = emails || []
@@ -105,6 +110,72 @@ export default function EmailComposer({
     return emailRegex.test(email.trim())
   }
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+  }
+
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+
+    const maxSize = 10 * 1024 * 1024
+    const newAttachments: EmailAttachment[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      if (file.size > maxSize) {
+        toast.error(`${file.name} er for stor (maks 10 MB)`)
+        continue
+      }
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const attachment: EmailAttachment = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url: e.target?.result as string
+        }
+        newAttachments.push(attachment)
+
+        if (newAttachments.length === files.length || newAttachments.length + attachments.length >= files.length) {
+          setAttachments(prev => [...prev, ...newAttachments])
+          toast.success(`${newAttachments.length} fil(er) lagt til`)
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setAttachments(prev => prev.filter(att => att.id !== attachmentId))
+    toast.info('Vedlegg fjernet')
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    handleFileSelect(e.dataTransfer.files)
+  }
+
   const handleSend = async () => {
     if (!to.trim()) {
       toast.error('Vennligst fyll inn mottaker')
@@ -146,6 +217,7 @@ export default function EmailComposer({
         trackingEnabled,
         openCount: 0,
         clickCount: 0,
+        attachments: attachments.length > 0 ? attachments : undefined,
         sentAt: now,
         createdAt: now,
         updatedAt: now
@@ -265,6 +337,8 @@ export default function EmailComposer({
     setSelectedTemplateId('')
     setSaveAsTemplate(false)
     setTemplateName('')
+    setAttachments([])
+    setIsDragging(false)
     onClose()
   }
 
@@ -414,6 +488,98 @@ export default function EmailComposer({
                 onChange={(e) => setBody(e.target.value)}
                 className="mt-1.5 min-h-[200px]"
               />
+            </div>
+
+            <div>
+              <Label>{t.email.attachments}</Label>
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`mt-1.5 border-2 border-dashed rounded-lg transition-colors ${
+                  isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="flex flex-col items-center justify-center py-6 px-4 cursor-pointer"
+                >
+                  <Paperclip size={32} className="text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    <span className="font-medium text-foreground">Klikk for å velge filer</span>
+                    {' '}eller dra og slipp her
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Maks 10 MB per fil
+                  </p>
+                </label>
+              </div>
+
+              <AnimatePresence>
+                {attachments.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 space-y-2"
+                  >
+                    {attachments.map((attachment) => (
+                      <motion.div
+                        key={attachment.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="flex-shrink-0">
+                            <File size={24} className="text-primary" weight="duotone" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(attachment.size)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAttachment(attachment.id)}
+                          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash size={16} className="text-destructive" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {attachments.length} vedlegg ({formatFileSize(attachments.reduce((sum, att) => sum + att.size, 0))})
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAttachments([])}
+                        className="text-xs h-7"
+                      >
+                        Fjern alle
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 

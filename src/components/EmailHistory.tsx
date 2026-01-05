@@ -9,13 +9,17 @@ import {
   CheckCircle,
   XCircle,
   ArrowRight,
-  MagnifyingGlass
+  MagnifyingGlass,
+  Paperclip,
+  File,
+  DownloadSimple
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { formatDate, formatRelativeDate, formatDateTime } from '@/lib/helpers'
 import type { Email, Contact, EmailStatus } from '@/lib/types'
@@ -73,6 +77,24 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
 
   const getContact = (contactId: string) => {
     return safeContacts.find(c => c.id === contactId)
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+  }
+
+  const handleDownloadAttachment = (attachment: { name: string; url?: string }) => {
+    if (!attachment.url) return
+    const link = document.createElement('a')
+    link.href = attachment.url
+    link.download = attachment.name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   if (filteredEmails.length === 0 && !searchQuery) {
@@ -153,6 +175,12 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                             <Clock size={14} />
                             {formatRelativeDate(email.sentAt || email.createdAt)}
                           </div>
+                          {email.attachments && email.attachments.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Paperclip size={14} />
+                              {email.attachments.length} vedlegg
+                            </div>
+                          )}
                           {email.trackingEnabled && (
                             <>
                               {email.openCount > 0 && (
@@ -185,6 +213,42 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                                   <p className="text-muted-foreground mb-1">Melding:</p>
                                   <p className="whitespace-pre-wrap">{email.body}</p>
                                 </div>
+
+                                {email.attachments && email.attachments.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">Vedlegg:</p>
+                                    <div className="space-y-2">
+                                      {email.attachments.map((attachment) => (
+                                        <div
+                                          key={attachment.id}
+                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                                        >
+                                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <File size={20} className="text-primary flex-shrink-0" weight="duotone" />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-medium truncate">
+                                                {attachment.name}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {formatFileSize(attachment.size)}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          {attachment.url && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleDownloadAttachment(attachment)}
+                                              className="flex-shrink-0"
+                                            >
+                                              <DownloadSimple size={16} />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
 
                                 {email.trackingEnabled && (
                                   <div className="grid grid-cols-2 gap-3 p-3 bg-muted rounded-lg text-sm">

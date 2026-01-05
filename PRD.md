@@ -48,10 +48,10 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Activity counts per deal visible in deal detail view
 
 ### Email Integration
-- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM
-- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions
+- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM; file attachment support with drag-and-drop upload
+- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions; enable sending documents, proposals, and files directly from CRM
 - **Trigger**: User clicks "Send e-post" button from contact detail, deal detail, or dedicated emails view
-- **Progression**: Click send email → Fill recipient/subject/body → Enable tracking → Send → Email tracked → Opens/clicks recorded → Activities auto-logged
+- **Progression**: Click send email → Fill recipient/subject/body → Attach files (drag-drop or click) → Preview attachments → Enable tracking → Send → Email tracked → Opens/clicks recorded → Activities auto-logged
 - **Success criteria**:
   - Emails sent with automatic tracking of opens and clicks
   - Email history visible per contact and per deal with filtering
@@ -63,6 +63,12 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Cc/Bcc support with validation
   - Save-as-template option during compose
   - Email search across all communications
+  - File attachment support with drag-and-drop interface
+  - Multiple file uploads with size validation (10 MB per file)
+  - Attachment preview in email composer with remove capability
+  - File size display in KB/MB format
+  - Attachment display in email history with download functionality
+  - Visual file type indicators with icons
 
 ### Reporting Dashboard
 - **Functionality**: Visual reports on leads, deals, revenue, team performance, and email metrics
