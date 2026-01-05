@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, DragEvent } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Plus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { norwegianTranslations as t, defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
+import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
 
 export default function PipelineView() {
@@ -19,6 +20,8 @@ export default function PipelineView() {
   const [stages] = useKV<PipelineStage[]>('pipeline-stages', defaultPipelineStages)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedStage, setSelectedStage] = useState<string>('')
+  const [draggedDeal, setDraggedDeal] = useState<string | null>(null)
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null)
 
   const safeDeals = deals || []
   const safeContacts = contacts || []
@@ -53,6 +56,47 @@ export default function PipelineView() {
       )
     )
     toast.success('Avtale flyttet')
+  }
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, dealId: string) => {
+    setDraggedDeal(dealId)
+    e.dataTransfer.effectAllowed = 'move'
+    e.currentTarget.style.opacity = '0.5'
+  }
+
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
+    setDraggedDeal(null)
+    setDragOverStage(null)
+    e.currentTarget.style.opacity = '1'
+  }
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDragEnter = (stageId: string) => {
+    setDragOverStage(stageId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverStage(null)
+  }
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetStageId: string) => {
+    e.preventDefault()
+    setDragOverStage(null)
+    
+    if (!draggedDeal) return
+
+    const deal = safeDeals.find(d => d.id === draggedDeal)
+    if (!deal || deal.stage === targetStageId) {
+      setDraggedDeal(null)
+      return
+    }
+
+    handleStageChange(draggedDeal, targetStageId)
+    setDraggedDeal(null)
   }
 
   const getContactName = (contactId: string): string => {
@@ -116,9 +160,20 @@ export default function PipelineView() {
         {activePipelineStages.map((stage) => {
           const stageDeals = openDeals.filter(d => d.stage === stage.id)
           const stageValue = stageDeals.reduce((sum, d) => sum + d.value, 0)
+          const isDropTarget = dragOverStage === stage.id
           
           return (
-            <div key={stage.id} className="space-y-3">
+            <div 
+              key={stage.id} 
+              className={cn(
+                "space-y-3 p-3 rounded-lg transition-all",
+                isDropTarget && "bg-accent/20 ring-2 ring-accent"
+              )}
+              onDragOver={handleDragOver}
+              onDragEnter={() => handleDragEnter(stage.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, stage.id)}
+            >
               <Card className="bg-muted/50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center justify-between">
@@ -133,9 +188,18 @@ export default function PipelineView() {
                 </CardHeader>
               </Card>
 
-              <div className="space-y-2">
+              <div className="space-y-2 min-h-[100px]">
                 {stageDeals.map((deal) => (
-                  <Card key={deal.id} className="hover:shadow-md transition-all cursor-move">
+                  <Card 
+                    key={deal.id} 
+                    className={cn(
+                      "hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
+                      draggedDeal === deal.id && "opacity-50"
+                    )}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, deal.id)}
+                    onDragEnd={handleDragEnd}
+                  >
                     <CardContent className="p-4 space-y-2">
                       <h4 className="font-semibold text-sm">{deal.title}</h4>
                       <p className="text-xs text-muted-foreground">
