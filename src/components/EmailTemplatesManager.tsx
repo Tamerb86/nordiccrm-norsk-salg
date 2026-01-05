@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   Plus,
   Trash,
   Pencil,
   Copy,
-  FileText
+  FileText,
+  Sparkle
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -17,7 +18,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import { formatRelativeDate } from '@/lib/helpers'
+import { formatRelativeDate, getTemplateVariablePreview } from '@/lib/helpers'
+import TemplateVariableInserter from '@/components/TemplateVariableInserter'
 import type { EmailTemplate } from '@/lib/types'
 
 interface EmailTemplatesManagerProps {
@@ -32,6 +34,9 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
   const [templateSubject, setTemplateSubject] = useState('')
   const [templateBody, setTemplateBody] = useState('')
   const [templateCategory, setTemplateCategory] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
+  const subjectInputRef = useRef<HTMLInputElement>(null)
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const safeTemplates = templates || []
 
@@ -49,6 +54,7 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
       setTemplateBody('')
       setTemplateCategory('')
     }
+    setShowPreview(false)
     setIsDialogOpen(true)
   }
 
@@ -126,6 +132,45 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
       toast.success('Mal lastet inn')
     }
   }
+
+  const handleInsertVariable = (variable: string) => {
+    const textarea = bodyTextareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const newBody = templateBody.substring(0, start) + variable + templateBody.substring(end)
+      setTemplateBody(newBody)
+      
+      setTimeout(() => {
+        textarea.focus()
+        const newPos = start + variable.length
+        textarea.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setTemplateBody(templateBody + variable)
+    }
+  }
+
+  const handleInsertVariableInSubject = (variable: string) => {
+    const input = subjectInputRef.current
+    if (input) {
+      const start = input.selectionStart || 0
+      const end = input.selectionEnd || 0
+      const newSubject = templateSubject.substring(0, start) + variable + templateSubject.substring(end)
+      setTemplateSubject(newSubject)
+      
+      setTimeout(() => {
+        input.focus()
+        const newPos = start + variable.length
+        input.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setTemplateSubject(templateSubject + variable)
+    }
+  }
+
+  const previewSubject = getTemplateVariablePreview(templateSubject)
+  const previewBody = getTemplateVariablePreview(templateBody)
 
   if (safeTemplates.length === 0 && !isDialogOpen) {
     return (
@@ -268,25 +313,77 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
             </div>
 
             <div>
-              <Label htmlFor="template-subject">{t.email.subject}</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="template-subject">{t.email.subject}</Label>
+                <TemplateVariableInserter onInsert={handleInsertVariableInSubject} />
+              </div>
               <Input
+                ref={subjectInputRef}
                 id="template-subject"
                 placeholder="Takk for møtet i dag"
                 value={templateSubject}
                 onChange={(e) => setTemplateSubject(e.target.value)}
-                className="mt-1.5"
               />
             </div>
 
             <div>
-              <Label htmlFor="template-body">{t.email.body}</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="template-body">{t.email.body}</Label>
+                <div className="flex items-center gap-2">
+                  <TemplateVariableInserter onInsert={handleInsertVariable} />
+                  {(templateSubject.includes('{') || templateBody.includes('{')) && (
+                    <Button
+                      variant={showPreview ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setShowPreview(!showPreview)}
+                      className="gap-2"
+                    >
+                      <Sparkle size={16} weight={showPreview ? 'fill' : 'regular'} />
+                      {showPreview ? 'Skjul' : 'Forhåndsvisning'}
+                    </Button>
+                  )}
+                </div>
+              </div>
               <Textarea
+                ref={bodyTextareaRef}
                 id="template-body"
-                placeholder="Hei [Navn],&#10;&#10;Takk for et hyggelig møte i dag..."
+                placeholder="Hei {firstName},&#10;&#10;Takk for et hyggelig møte i dag..."
                 value={templateBody}
                 onChange={(e) => setTemplateBody(e.target.value)}
-                className="mt-1.5 min-h-[200px]"
+                className="min-h-[200px]"
               />
+              
+              <AnimatePresence>
+                {showPreview && (templateSubject.includes('{') || templateBody.includes('{')) && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 overflow-hidden"
+                  >
+                    <div className="p-4 bg-accent/10 border-2 border-accent/30 rounded-lg space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkle size={18} weight="duotone" className="text-accent" />
+                        <h4 className="font-semibold text-sm">Forhåndsvisning med eksempeldata</h4>
+                      </div>
+                      
+                      {templateSubject.includes('{') && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Emne:</Label>
+                          <p className="text-sm font-medium mt-1">{previewSubject}</p>
+                        </div>
+                      )}
+                      
+                      {templateBody.includes('{') && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Melding:</Label>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{previewBody}</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="flex gap-3 pt-4">

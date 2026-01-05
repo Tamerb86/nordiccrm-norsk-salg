@@ -193,3 +193,118 @@ export function formatRecurrencePattern(pattern: RecurrencePattern, interval: nu
   
   return patterns[pattern] || 'Ingen gjentakelse'
 }
+
+export interface TemplateVariable {
+  key: string
+  label: string
+  description: string
+  example: string
+}
+
+export const availableTemplateVariables: TemplateVariable[] = [
+  {
+    key: 'firstName',
+    label: 'Fornavn',
+    description: 'Kontaktens fornavn',
+    example: 'Ola'
+  },
+  {
+    key: 'lastName',
+    label: 'Etternavn',
+    description: 'Kontaktens etternavn',
+    example: 'Nordmann'
+  },
+  {
+    key: 'fullName',
+    label: 'Fullt navn',
+    description: 'Kontaktens fulle navn',
+    example: 'Ola Nordmann'
+  },
+  {
+    key: 'email',
+    label: 'E-post',
+    description: 'Kontaktens e-postadresse',
+    example: 'ola@eksempel.no'
+  },
+  {
+    key: 'phone',
+    label: 'Telefon',
+    description: 'Kontaktens telefonnummer',
+    example: '+47 123 45 678'
+  },
+  {
+    key: 'company',
+    label: 'Selskap',
+    description: 'Kontaktens selskapsnavn',
+    example: 'Eksempel AS'
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    description: 'Kontaktens nåværende status',
+    example: 'Kunde'
+  },
+  {
+    key: 'value',
+    label: 'Verdi',
+    description: 'Kontaktens totale verdi',
+    example: '50 000 kr'
+  },
+  {
+    key: 'today',
+    label: 'Dagens dato',
+    description: 'Dagens dato',
+    example: format(new Date(), 'dd.MM.yyyy', { locale: nb })
+  }
+]
+
+export function replaceTemplateVariables(
+  text: string,
+  contact: {
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+    company?: string
+    status?: string
+    value?: number
+  }
+): string {
+  let result = text
+
+  const fullName = contact.firstName && contact.lastName 
+    ? `${contact.firstName} ${contact.lastName}` 
+    : contact.firstName || contact.lastName || ''
+
+  const replacements: Record<string, string> = {
+    '{firstName}': contact.firstName || '[Fornavn]',
+    '{lastName}': contact.lastName || '[Etternavn]',
+    '{fullName}': fullName || '[Fullt navn]',
+    '{email}': contact.email || '[E-post]',
+    '{phone}': contact.phone || '[Telefon]',
+    '{company}': contact.company || '[Selskap]',
+    '{status}': contact.status || '[Status]',
+    '{value}': contact.value ? formatCurrency(contact.value) : '[Verdi]',
+    '{today}': format(new Date(), 'dd.MM.yyyy', { locale: nb })
+  }
+
+  Object.entries(replacements).forEach(([key, value]) => {
+    result = result.replace(new RegExp(key, 'g'), value)
+  })
+
+  return result
+}
+
+export function getTemplateVariablePreview(text: string): string {
+  const previewContact = {
+    firstName: 'Ola',
+    lastName: 'Nordmann',
+    email: 'ola@eksempel.no',
+    phone: '+47 123 45 678',
+    company: 'Eksempel AS',
+    status: 'Kunde',
+    value: 50000
+  }
+
+  return replaceTemplateVariables(text, previewContact)
+}

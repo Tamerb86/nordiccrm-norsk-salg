@@ -104,6 +104,17 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Info popover explaining all restrictions
   - Attachment display in email history with download functionality
   - Visual file type indicators with categorized icons (Document/Image/Archive)
+  - Email template personalization with variables:
+    - Insert template variables using `{variableName}` syntax
+    - Available variables: firstName, lastName, fullName, email, phone, company, status, value, today
+    - Visual variable inserter component with search and descriptions
+    - Automatic replacement with contact data when email is sent
+    - Preview functionality showing how variables will be replaced
+    - Works in both subject and body fields
+    - Preview uses actual contact data if available, otherwise shows example data
+    - Template manager includes variable support with preview
+    - Norwegian variable names and descriptions
+    - Fallback placeholders for missing data (e.g., [Fornavn] if firstName is empty)
 
 ### Reporting Dashboard
 - **Functionality**: Visual reports on leads, deals, revenue, team performance, and email metrics

@@ -11,7 +11,8 @@ import {
   File,
   Trash,
   Info,
-  Repeat
+  Repeat,
+  Sparkle
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,8 @@ import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import { calculateNextScheduledDate } from '@/lib/helpers'
+import { calculateNextScheduledDate, replaceTemplateVariables, getTemplateVariablePreview } from '@/lib/helpers'
+import TemplateVariableInserter from '@/components/TemplateVariableInserter'
 import type { Email, EmailTemplate, Contact, Activity, EmailAttachment, RecurrencePattern } from '@/lib/types'
 
 interface EmailComposerProps {
@@ -76,11 +78,16 @@ export default function EmailComposer({
   const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'date' | 'after'>('never')
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
   const [recurrenceEndAfter, setRecurrenceEndAfter] = useState(5)
+  const [showPreview, setShowPreview] = useState(false)
+  const subjectInputRef = useRef<HTMLInputElement>(null)
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const safeContacts = contacts || []
   const safeEmails = emails || []
   const safeTemplates = templates || []
   const safeActivities = activities || []
+
+  const currentContact = contactId ? safeContacts.find(c => c.id === contactId) : undefined
 
   useEffect(() => {
     if (initialTo) setTo(initialTo)
@@ -373,6 +380,14 @@ export default function EmailComposer({
         scheduledAtISO = new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
       }
 
+      const processedSubject = currentContact 
+        ? replaceTemplateVariables(subject.trim(), currentContact)
+        : subject.trim()
+      
+      const processedBody = currentContact
+        ? replaceTemplateVariables(body.trim(), currentContact)
+        : body.trim()
+
       const newEmail: Email = {
         id: emailId,
         contactId: contactId || '',
@@ -381,8 +396,8 @@ export default function EmailComposer({
         to: to.trim(),
         cc: cc ? cc.split(',').map(e => e.trim()) : undefined,
         bcc: bcc ? bcc.split(',').map(e => e.trim()) : undefined,
-        subject: subject.trim(),
-        body: body.trim(),
+        subject: processedSubject,
+        body: processedBody,
         status: scheduled ? 'scheduled' : 'sent',
         trackingEnabled,
         openCount: 0,
@@ -410,8 +425,8 @@ export default function EmailComposer({
           type: 'email-sent',
           contactId: contactId || '',
           dealId,
-          subject: `E-post sendt: ${subject}`,
-          notes: body.substring(0, 200) + (body.length > 200 ? '...' : ''),
+          subject: `E-post sendt: ${processedSubject}`,
+          notes: processedBody.substring(0, 200) + (processedBody.length > 200 ? '...' : ''),
           createdBy: 'Deg',
           createdAt: now,
           metadata: {
@@ -536,6 +551,7 @@ export default function EmailComposer({
     setRecurrenceEndType('never')
     setRecurrenceEndDate('')
     setRecurrenceEndAfter(5)
+    setShowPreview(false)
     onClose()
   }
 
@@ -547,6 +563,45 @@ export default function EmailComposer({
       time: now.toTimeString().slice(0, 5)
     }
   }
+
+  const handleInsertVariable = (variable: string) => {
+    const textarea = bodyTextareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const newBody = body.substring(0, start) + variable + body.substring(end)
+      setBody(newBody)
+      
+      setTimeout(() => {
+        textarea.focus()
+        const newPos = start + variable.length
+        textarea.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setBody(body + variable)
+    }
+  }
+
+  const handleInsertVariableInSubject = (variable: string) => {
+    const input = subjectInputRef.current
+    if (input) {
+      const start = input.selectionStart || 0
+      const end = input.selectionEnd || 0
+      const newSubject = subject.substring(0, start) + variable + subject.substring(end)
+      setSubject(newSubject)
+      
+      setTimeout(() => {
+        input.focus()
+        const newPos = start + variable.length
+        input.setSelectionRange(newPos, newPos)
+      }, 0)
+    } else {
+      setSubject(subject + variable)
+    }
+  }
+
+  const previewSubject = currentContact ? replaceTemplateVariables(subject, currentContact) : getTemplateVariablePreview(subject)
+  const previewBody = currentContact ? replaceTemplateVariables(body, currentContact) : getTemplateVariablePreview(body)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -675,25 +730,83 @@ export default function EmailComposer({
             </AnimatePresence>
 
             <div>
-              <Label htmlFor="subject">{t.email.subject}</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="subject">{t.email.subject}</Label>
+                <TemplateVariableInserter onInsert={handleInsertVariableInSubject} />
+              </div>
               <Input
+                ref={subjectInputRef}
                 id="subject"
                 placeholder="Skriv inn emne..."
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="mt-1.5"
               />
             </div>
 
             <div>
-              <Label htmlFor="body">{t.email.body}</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="body">{t.email.body}</Label>
+                <div className="flex items-center gap-2">
+                  <TemplateVariableInserter onInsert={handleInsertVariable} />
+                  {(subject.includes('{') || body.includes('{')) && (
+                    <Button
+                      variant={showPreview ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setShowPreview(!showPreview)}
+                      className="gap-2"
+                    >
+                      <Sparkle size={16} weight={showPreview ? 'fill' : 'regular'} />
+                      {showPreview ? 'Skjul forhåndsvisning' : 'Forhåndsvisning'}
+                    </Button>
+                  )}
+                </div>
+              </div>
               <Textarea
+                ref={bodyTextareaRef}
                 id="body"
                 placeholder="Skriv din melding her..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                className="mt-1.5 min-h-[200px]"
+                className="min-h-[200px]"
               />
+              
+              <AnimatePresence>
+                {showPreview && (subject.includes('{') || body.includes('{')) && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-3 overflow-hidden"
+                  >
+                    <div className="p-4 bg-accent/10 border-2 border-accent/30 rounded-lg space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkle size={18} weight="duotone" className="text-accent" />
+                        <h4 className="font-semibold text-sm">Forhåndsvisning med variabler</h4>
+                      </div>
+                      
+                      {subject.includes('{') && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Emne:</Label>
+                          <p className="text-sm font-medium mt-1">{previewSubject}</p>
+                        </div>
+                      )}
+                      
+                      {body.includes('{') && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Melding:</Label>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{previewBody}</p>
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-muted-foreground italic">
+                        💡 {currentContact 
+                          ? 'Forhåndsvisning med faktiske data fra kontakten'
+                          : 'Forhåndsvisning med eksempeldata'}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div>
