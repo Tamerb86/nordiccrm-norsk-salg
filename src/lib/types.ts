@@ -156,3 +156,72 @@ export interface CustomTemplateVariable {
   createdAt: string
   updatedAt: string
 }
+
+export type ApiKeyPermission = 'read' | 'write' | 'delete' | 'admin'
+
+export interface ApiKey {
+  id: string
+  name: string
+  key: string
+  permissions: ApiKeyPermission[]
+  lastUsedAt?: string
+  expiresAt?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type WebhookEvent = 
+  | 'contact.created' 
+  | 'contact.updated' 
+  | 'contact.deleted'
+  | 'deal.created' 
+  | 'deal.updated' 
+  | 'deal.stage_changed'
+  | 'deal.closed'
+  | 'task.created'
+  | 'task.completed'
+  | 'email.sent'
+  | 'email.opened'
+  | 'email.clicked'
+
+export interface Webhook {
+  id: string
+  name: string
+  url: string
+  events: WebhookEvent[]
+  secret: string
+  isActive: boolean
+  lastTriggeredAt?: string
+  lastStatus?: 'success' | 'failed'
+  failureCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type IntegrationType = 'smtp' | 'sms' | 'accounting' | 'calendar' | 'storage' | 'custom'
+
+export interface Integration {
+  id: string
+  type: IntegrationType
+  name: string
+  provider: string
+  isActive: boolean
+  config: Record<string, any>
+  lastSyncAt?: string
+  lastSyncStatus?: 'success' | 'failed'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WebhookLog {
+  id: string
+  webhookId: string
+  event: WebhookEvent
+  payload: Record<string, any>
+  statusCode?: number
+  responseTime?: number
+  success: boolean
+  errorMessage?: string
+  createdAt: string
+}

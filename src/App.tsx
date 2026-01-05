@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple } from '@phosphor-icons/react'
+import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected } from '@phosphor-icons/react'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import Dashboard from '@/components/Dashboard'
 import ContactsView from '@/components/ContactsView'
 import PipelineView from '@/components/PipelineView'
 import TasksView from '@/components/TasksView'
 import EmailsView from '@/components/EmailsView'
+import ApiIntegrationsView from '@/components/ApiIntegrationsView'
 import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
 import { Toaster } from '@/components/ui/sonner'
 
-type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails'
+type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -20,6 +21,7 @@ function App() {
     { id: 'pipeline' as View, label: t.nav.pipeline, icon: Target },
     { id: 'tasks' as View, label: t.nav.tasks, icon: ListChecks },
     { id: 'emails' as View, label: t.email.title, icon: EnvelopeSimple },
+    { id: 'api' as View, label: t.api.title, icon: PlugsConnected },
   ]
 
   return (
@@ -78,6 +80,7 @@ function App() {
         {currentView === 'pipeline' && <PipelineView />}
         {currentView === 'tasks' && <TasksView />}
         {currentView === 'emails' && <EmailsView />}
+        {currentView === 'api' && <ApiIntegrationsView />}
       </main>
 
       <Toaster position="top-right" />

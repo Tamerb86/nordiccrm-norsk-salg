@@ -141,6 +141,37 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 - **Progression**: View dashboard → See key metrics → Filter by date/user → Export data → Analyze trends
 - **Success criteria**: Accurate calculations, real-time data, NOK currency formatting, email engagement metrics
 
+### API & External Integrations
+- **Functionality**: Complete API management system with API keys, webhooks, and external service integrations; supports SMTP, SMS, accounting systems, calendar, and custom integrations
+- **Purpose**: Enable seamless integration with external systems, automate workflows, and extend CRM functionality through third-party services
+- **Trigger**: User navigates to API section from main navigation
+- **Progression**: 
+  - API Keys: Create key → Set permissions (read/write/delete/admin) → Set expiry → Copy key → Use in external systems → Revoke when needed
+  - Webhooks: Create webhook → Enter URL → Select events to listen to → Get secret key → Test webhook → View logs → Monitor failures
+  - Integrations: Choose type (SMTP/SMS/Accounting/Calendar) → Select provider → Configure credentials → Test connection → Activate → Sync data
+- **Success criteria**:
+  - API keys generated with secure random strings (40 chars + prefix)
+  - Keys can be revoked or deleted independently
+  - Permission system enforces access control (read, write, delete, admin)
+  - Optional expiry dates with automatic deactivation
+  - Last used timestamp tracking
+  - Webhooks support 12+ event types (contact/deal/task/email lifecycle)
+  - Webhook delivery logs with status codes and response times
+  - Failure count tracking with visual indicators
+  - Test webhook functionality sends mock payload
+  - Secret keys for webhook signature verification
+  - SMTP integration with configurable host, port, TLS, credentials
+  - SMS integration with API key and sender ID configuration
+  - Integration sync status tracking (success/failed with timestamps)
+  - Active/inactive toggle for all integrations
+  - Comprehensive API documentation in Norwegian
+  - Rate limiting documentation (1000 req/hour)
+  - Clear error codes and troubleshooting guide
+  - All data persists using useKV
+  - Visual status indicators (active/inactive, success/failed)
+  - Copy-to-clipboard for API keys and secrets
+  - Mobile-responsive tabs and cards
+
 ## Edge Case Handling
 - **Empty States**: Helpful onboarding messages with action buttons when no contacts/deals exist
 - **Duplicate Contacts**: Warning when email/phone matches existing contact, offer to merge

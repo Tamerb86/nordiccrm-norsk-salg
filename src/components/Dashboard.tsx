@@ -5,6 +5,7 @@ import { formatCurrency, formatNumber, calculateConversionRate } from '@/lib/hel
 import type { Contact, Deal, Task, Activity, Email } from '@/lib/types'
 import { Users, CurrencyCircleDollar, Target, CheckCircle, Phone, EnvelopeSimple, CalendarDots, EnvelopeOpen, CursorClick } from '@phosphor-icons/react'
 import ActivityTimeline from '@/components/ActivityTimeline'
+import IntegrationStatusWidget from '@/components/IntegrationStatusWidget'
 
 export default function Dashboard() {
   const [contacts] = useKV<Contact[]>('contacts', [])
@@ -224,6 +225,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <IntegrationStatusWidget />
 
       {safeActivities.length > 0 && (
         <ActivityTimeline limit={10} showFilters={true} />
