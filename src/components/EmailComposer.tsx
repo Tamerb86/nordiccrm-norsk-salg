@@ -9,7 +9,8 @@ import {
   FloppyDisk,
   ListBullets,
   File,
-  Trash
+  Trash,
+  Info
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import type { Email, EmailTemplate, Contact, Activity, EmailAttachment } from '@/lib/types'
@@ -110,6 +112,58 @@ export default function EmailComposer({
     return emailRegex.test(email.trim())
   }
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024
+  const MAX_TOTAL_SIZE = 25 * 1024 * 1024
+  const MAX_ATTACHMENTS = 10
+
+  const ALLOWED_FILE_TYPES = {
+    documents: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'text/csv',
+    ],
+    images: [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ],
+    archives: [
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/x-7z-compressed',
+    ],
+  }
+
+  const ALLOWED_EXTENSIONS = [
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.txt', '.csv', '.jpg', '.jpeg', '.png', '.gif', '.webp',
+    '.svg', '.zip', '.rar', '.7z'
+  ]
+
+  const isFileTypeAllowed = (file: File): boolean => {
+    const allAllowedTypes = [
+      ...ALLOWED_FILE_TYPES.documents,
+      ...ALLOWED_FILE_TYPES.images,
+      ...ALLOWED_FILE_TYPES.archives,
+    ]
+    
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+    const mimeTypeAllowed = allAllowedTypes.includes(file.type)
+    const extensionAllowed = ALLOWED_EXTENSIONS.includes(fileExtension)
+    
+    return mimeTypeAllowed || extensionAllowed
+  }
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -118,38 +172,113 @@ export default function EmailComposer({
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
   }
 
+  const getTotalAttachmentsSize = (): number => {
+    return attachments.reduce((sum, att) => sum + att.size, 0)
+  }
+
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return
 
-    const maxSize = 10 * 1024 * 1024
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      toast.error(`Maksimalt ${MAX_ATTACHMENTS} vedlegg tillatt`)
+      return
+    }
+
+    const filesArray = Array.from(files)
+    const remainingSlots = MAX_ATTACHMENTS - attachments.length
+    const filesToProcess = filesArray.slice(0, remainingSlots)
+    
+    if (filesArray.length > remainingSlots) {
+      toast.warning(`Kun ${remainingSlots} fil(er) ble lagt til. Maks ${MAX_ATTACHMENTS} vedlegg tillatt.`)
+    }
+
     const newAttachments: EmailAttachment[] = []
+    const errors: string[] = []
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-
-      if (file.size > maxSize) {
-        toast.error(`${file.name} er for stor (maks 10 MB)`)
+    for (const file of filesToProcess) {
+      if (!isFileTypeAllowed(file)) {
+        errors.push(`${file.name}: Filtype ikke tillatt`)
         continue
       }
 
-      const reader = new FileReader()
-      reader.onload = (e) => {
+      if (file.size > MAX_FILE_SIZE) {
+        errors.push(`${file.name}: For stor (maks ${formatFileSize(MAX_FILE_SIZE)})`)
+        continue
+      }
+
+      const currentTotalSize = getTotalAttachmentsSize()
+      const potentialTotalSize = currentTotalSize + file.size + newAttachments.reduce((sum, att) => sum + att.size, 0)
+      
+      if (potentialTotalSize > MAX_TOTAL_SIZE) {
+        errors.push(`${file.name}: Total størrelse ville overstige ${formatFileSize(MAX_TOTAL_SIZE)}`)
+        continue
+      }
+
+      try {
+        const dataUrl = await readFileAsDataURL(file)
         const attachment: EmailAttachment = {
           id: crypto.randomUUID(),
           name: file.name,
           size: file.size,
           type: file.type,
-          url: e.target?.result as string
+          url: dataUrl
         }
         newAttachments.push(attachment)
+      } catch (error) {
+        errors.push(`${file.name}: Feil ved lesing av fil`)
+      }
+    }
 
-        if (newAttachments.length === files.length || newAttachments.length + attachments.length >= files.length) {
-          setAttachments(prev => [...prev, ...newAttachments])
-          toast.success(`${newAttachments.length} fil(er) lagt til`)
+    if (newAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...newAttachments])
+      toast.success(`${newAttachments.length} fil(er) lagt til`)
+    }
+
+    if (errors.length > 0) {
+      errors.forEach(error => toast.error(error))
+    }
+  }
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          resolve(e.target.result as string)
+        } else {
+          reject(new Error('Failed to read file'))
         }
       }
+      reader.onerror = () => reject(new Error('File read error'))
       reader.readAsDataURL(file)
+    })
+  }
+
+  const getFileTypeCategory = (type: string, name: string): string => {
+    const extension = '.' + name.split('.').pop()?.toLowerCase()
+    
+    if (ALLOWED_FILE_TYPES.images.includes(type) || ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+      return 'Bilde'
     }
+    if (ALLOWED_FILE_TYPES.archives.includes(type) || ['.zip', '.rar', '.7z'].includes(extension)) {
+      return 'Arkiv'
+    }
+    if (type.includes('pdf') || extension === '.pdf') {
+      return 'PDF'
+    }
+    if (type.includes('word') || ['.doc', '.docx'].includes(extension)) {
+      return 'Word'
+    }
+    if (type.includes('excel') || type.includes('spreadsheet') || ['.xls', '.xlsx'].includes(extension)) {
+      return 'Excel'
+    }
+    if (type.includes('powerpoint') || type.includes('presentation') || ['.ppt', '.pptx'].includes(extension)) {
+      return 'PowerPoint'
+    }
+    if (type.includes('text') || ['.txt', '.csv'].includes(extension)) {
+      return 'Tekst'
+    }
+    return 'Dokument'
   }
 
   const handleRemoveAttachment = (attachmentId: string) => {
@@ -491,12 +620,51 @@ export default function EmailComposer({
             </div>
 
             <div>
-              <Label>{t.email.attachments}</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Label>{t.email.attachments}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                        <Info size={14} className="text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="start">
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-medium text-sm mb-2">Vedleggsrestriksjoner</h4>
+                          <div className="space-y-2 text-xs text-muted-foreground">
+                            <div className="flex items-start gap-2">
+                              <span className="font-medium text-foreground">📏 Størrelse:</span>
+                              <div>
+                                <p>Maks {formatFileSize(MAX_FILE_SIZE)} per fil</p>
+                                <p>Maks {formatFileSize(MAX_TOTAL_SIZE)} totalt</p>
+                                <p>Maks {MAX_ATTACHMENTS} filer</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="font-medium text-foreground">📄 Tillatte typer:</span>
+                              <div>
+                                <p>• Dokumenter: PDF, Word, Excel, PowerPoint, TXT, CSV</p>
+                                <p>• Bilder: JPG, PNG, GIF, WebP, SVG</p>
+                                <p>• Arkiver: ZIP, RAR, 7Z</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {attachments.length}/{MAX_ATTACHMENTS} filer • {formatFileSize(getTotalAttachmentsSize())}/{formatFileSize(MAX_TOTAL_SIZE)}
+                </span>
+              </div>
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`mt-1.5 border-2 border-dashed rounded-lg transition-colors ${
+                className={`border-2 border-dashed rounded-lg transition-colors ${
                   isDragging
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50'
@@ -509,6 +677,7 @@ export default function EmailComposer({
                   onChange={(e) => handleFileSelect(e.target.files)}
                   className="hidden"
                   id="file-upload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar,.7z"
                 />
                 <label
                   htmlFor="file-upload"
@@ -519,9 +688,14 @@ export default function EmailComposer({
                     <span className="font-medium text-foreground">Klikk for å velge filer</span>
                     {' '}eller dra og slipp her
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Maks 10 MB per fil
-                  </p>
+                  <div className="mt-2 space-y-0.5 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Maks {formatFileSize(MAX_FILE_SIZE)} per fil • {formatFileSize(MAX_TOTAL_SIZE)} totalt
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Tillatte typer: PDF, Word, Excel, PowerPoint, bilder, ZIP
+                    </p>
+                  </div>
                 </label>
               </div>
 
@@ -533,22 +707,38 @@ export default function EmailComposer({
                     exit={{ opacity: 0, height: 0 }}
                     className="mt-3 space-y-2"
                   >
+                    {getTotalAttachmentsSize() > MAX_TOTAL_SIZE * 0.8 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
+                      >
+                        <p className="text-xs text-destructive font-medium">
+                          ⚠️ Du nærmer deg maksimal total størrelse ({formatFileSize(MAX_TOTAL_SIZE)})
+                        </p>
+                      </motion.div>
+                    )}
                     {attachments.map((attachment) => (
                       <motion.div
                         key={attachment.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        className="flex items-center justify-between p-3 bg-muted rounded-lg group"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg group hover:bg-muted/80 transition-colors"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="flex-shrink-0">
                             <File size={24} className="text-primary" weight="duotone" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {attachment.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium truncate">
+                                {attachment.name}
+                              </p>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+                                {getFileTypeCategory(attachment.type, attachment.name)}
+                              </Badge>
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {formatFileSize(attachment.size)}
                             </p>
@@ -566,7 +756,7 @@ export default function EmailComposer({
                     ))}
                     <div className="flex items-center justify-between pt-2">
                       <p className="text-xs text-muted-foreground">
-                        {attachments.length} vedlegg ({formatFileSize(attachments.reduce((sum, att) => sum + att.size, 0))})
+                        {attachments.length} vedlegg • {formatFileSize(getTotalAttachmentsSize())} av {formatFileSize(MAX_TOTAL_SIZE)}
                       </p>
                       <Button
                         variant="ghost"
