@@ -207,6 +207,9 @@ export const norwegianTranslations = {
     no: 'Nei',
     success: 'Vellykket',
     error: 'Feil',
+    importExport: 'Importer/Eksporter',
+    exportVariables: 'Eksporter variabler',
+    importVariables: 'Importer variabler',
   },
 }
 

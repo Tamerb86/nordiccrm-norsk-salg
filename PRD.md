@@ -115,6 +115,24 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
     - Template manager includes variable support with preview
     - Norwegian variable names and descriptions
     - Fallback placeholders for missing data (e.g., [Fornavn] if firstName is empty)
+  - Custom template variable definitions:
+    - Create custom variables beyond system defaults (e.g., {prosjektnavn}, {referansenummer})
+    - Each custom variable has: unique key, display label, description, and example value
+    - Key validation prevents conflicts with system variables and duplicates
+    - Full CRUD operations (create, edit, delete) for custom variables
+    - Variable key restrictions: alphanumeric + underscore, must start with letter
+    - Variables displayed in composer variable inserter alongside system variables
+    - Import/Export functionality:
+      - Export all custom variables to JSON file for backup or sharing
+      - JSON includes metadata (version, export timestamp) and variable definitions
+      - Import variables from JSON file with duplicate detection
+      - Duplicate variables automatically skipped with clear user feedback
+      - Imported variables assigned new IDs and timestamps
+      - Import validation checks for required fields and proper JSON format
+      - Success messages indicate import count and skipped duplicates
+      - Dropdown menu interface for import/export actions
+      - Export filename includes timestamp for organization
+      - Hidden file input triggered programmatically for clean UX
 
 ### Reporting Dashboard
 - **Functionality**: Visual reports on leads, deals, revenue, team performance, and email metrics

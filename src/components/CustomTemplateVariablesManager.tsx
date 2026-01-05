@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   Plus,
   Trash,
   Pencil,
   BracketsCurly,
-  Warning
+  Warning,
+  Download,
+  Upload,
+  FileArrowDown,
+  FileArrowUp
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -15,6 +19,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import type { CustomTemplateVariable } from '@/lib/types'
 
@@ -26,6 +36,7 @@ export default function CustomTemplateVariablesManager() {
   const [variableLabel, setVariableLabel] = useState('')
   const [variableDescription, setVariableDescription] = useState('')
   const [variableExample, setVariableExample] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const safeCustomVariables = customVariables || []
 
@@ -134,6 +145,109 @@ export default function CustomTemplateVariablesManager() {
     toast.success('Variabel slettet')
   }
 
+  const handleExport = () => {
+    if (safeCustomVariables.length === 0) {
+      toast.error('Ingen variabler å eksportere')
+      return
+    }
+
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      variables: safeCustomVariables
+    }
+
+    const dataStr = JSON.stringify(exportData, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `custom-template-variables-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success(`${safeCustomVariables.length} variabel${safeCustomVariables.length !== 1 ? 'er' : ''} eksportert`)
+  }
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== 'application/json') {
+      toast.error('Vennligst last opp en JSON-fil')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string
+        const data = JSON.parse(content)
+
+        if (!data.variables || !Array.isArray(data.variables)) {
+          toast.error('Ugyldig filformat')
+          return
+        }
+
+        const validVariables = data.variables.filter((v: any) => {
+          return v.id && v.key && v.label && v.description && v.example
+        })
+
+        if (validVariables.length === 0) {
+          toast.error('Ingen gyldige variabler funnet i filen')
+          return
+        }
+
+        const existingKeys = safeCustomVariables.map(v => v.key)
+        const newVariables: CustomTemplateVariable[] = []
+        const skippedVariables: string[] = []
+
+        validVariables.forEach((v: CustomTemplateVariable) => {
+          if (existingKeys.includes(v.key) || newVariables.some(nv => nv.key === v.key)) {
+            skippedVariables.push(v.key)
+          } else {
+            newVariables.push({
+              ...v,
+              id: crypto.randomUUID(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            })
+          }
+        })
+
+        if (newVariables.length > 0) {
+          await setCustomVariables((current) => [...(current || []), ...newVariables])
+          
+          let message = `${newVariables.length} variabel${newVariables.length !== 1 ? 'er' : ''} importert`
+          if (skippedVariables.length > 0) {
+            message += ` (${skippedVariables.length} hoppet over pga. duplikater)`
+          }
+          toast.success(message)
+        } else {
+          toast.error('Alle variabler eksisterer allerede')
+        }
+      } catch (error) {
+        toast.error('Kunne ikke lese filen. Sjekk at den er gyldig JSON.')
+      }
+    }
+
+    reader.onerror = () => {
+      toast.error('Kunne ikke lese filen')
+    }
+
+    reader.readAsText(file)
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -148,10 +262,30 @@ export default function CustomTemplateVariablesManager() {
                 Opprett dine egne variabler for bruk i e-postmaler
               </p>
             </div>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus size={18} />
-              Ny variabel
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <FileArrowDown size={18} />
+                    Importer/Eksporter
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExport} disabled={safeCustomVariables.length === 0}>
+                    <Download size={16} className="mr-2" />
+                    Eksporter variabler
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={triggerFileInput}>
+                    <Upload size={16} className="mr-2" />
+                    Importer variabler
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus size={18} />
+                Ny variabel
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -323,6 +457,14 @@ export default function CustomTemplateVariablesManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={handleImport}
+        className="hidden"
+      />
     </div>
   )
 }
