@@ -16,6 +16,7 @@ import { norwegianTranslations as t, defaultPipelineStages } from '@/lib/norwegi
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
+import DealDetailView from '@/components/DealDetailView'
 
 interface DealFilters {
   minValue: string
@@ -36,6 +37,7 @@ export default function PipelineView() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [showClosedDeals, setShowClosedDeals] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
   const [filters, setFilters] = useState<DealFilters>({
     minValue: '',
     maxValue: '',
@@ -169,12 +171,18 @@ export default function PipelineView() {
     setDraggedDeal(dealId)
     e.dataTransfer.effectAllowed = 'move'
     e.currentTarget.style.opacity = '0.5'
+    
+    e.currentTarget.setAttribute('data-dragging', 'true')
   }
 
   const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
     setDraggedDeal(null)
     setDragOverStage(null)
     e.currentTarget.style.opacity = '1'
+    
+    setTimeout(() => {
+      e.currentTarget.removeAttribute('data-dragging')
+    }, 100)
   }
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -587,14 +595,20 @@ export default function PipelineView() {
                     >
                       <Card 
                         className={cn(
-                          "hover:shadow-md transition-shadow",
-                          !isClosedStage && "cursor-grab active:cursor-grabbing",
+                          "hover:shadow-md transition-shadow cursor-pointer",
+                          !isClosedStage && "active:cursor-grabbing",
                           draggedDeal === deal.id && "shadow-lg",
                           isClosedStage && "opacity-80"
                         )}
                         draggable={!isClosedStage}
                         onDragStart={(e) => !isClosedStage && handleDragStart(e, deal.id)}
                         onDragEnd={handleDragEnd}
+                        onClick={(e) => {
+                          const target = e.currentTarget
+                          if (!target.hasAttribute('data-dragging')) {
+                            setSelectedDealId(deal.id)
+                          }
+                        }}
                       >
                         <CardContent className="p-4 space-y-2">
                           <h4 className="font-semibold text-sm">{deal.title}</h4>
@@ -610,21 +624,23 @@ export default function PipelineView() {
                             </span>
                           </div>
                           {!isClosedStage && (
-                            <Select
-                              value={deal.stage}
-                              onValueChange={(value) => handleStageChange(deal.id, value)}
-                            >
-                              <SelectTrigger className="h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {safeStages.map((s) => (
-                                  <SelectItem key={s.id} value={s.id}>
-                                    {s.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={deal.stage}
+                                onValueChange={(value) => handleStageChange(deal.id, value)}
+                              >
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {safeStages.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           )}
                           {isClosedStage && deal.actualCloseDate && (
                             <p className="text-xs text-muted-foreground">
@@ -665,6 +681,15 @@ export default function PipelineView() {
         })}
         </AnimatePresence>
       </div>
+
+      <DealDetailView
+        dealId={selectedDealId}
+        isOpen={selectedDealId !== null}
+        onClose={() => setSelectedDealId(null)}
+        onUpdate={() => {
+          // Refresh is automatic due to useKV reactivity
+        }}
+      />
     </div>
   )
 }
