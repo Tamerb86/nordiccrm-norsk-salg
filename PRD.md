@@ -48,10 +48,10 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Activity counts per deal visible in deal detail view
 
 ### Email Integration
-- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM; file attachment support with drag-and-drop upload, comprehensive file type validation, and size restrictions; email scheduling to send emails at specific future times
-- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions; enable sending documents, proposals, and files directly from CRM with security controls; schedule emails for optimal timing
+- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM; file attachment support with drag-and-drop upload, comprehensive file type validation, and size restrictions; email scheduling with recurring patterns (daily, weekly, monthly)
+- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions; enable sending documents, proposals, and files directly from CRM with security controls; automate recurring communications
 - **Trigger**: User clicks "Send e-post" button from contact detail, deal detail, or dedicated emails view
-- **Progression**: Click send email → Fill recipient/subject/body → Attach files (drag-drop or click) → Preview attachments with file type badges → Enable tracking → Choose send now or schedule → (If scheduling) Select date/time → Schedule/Send → Email tracked → Opens/clicks recorded → Activities auto-logged
+- **Progression**: Click send email → Fill recipient/subject/body → Attach files (drag-drop or click) → Preview attachments with file type badges → Enable tracking → Choose send now or schedule → (If scheduling) Select date/time → (Optional) Enable recurrence → Select pattern (daily/weekly/monthly) → Set interval → Choose end condition (never/date/after X occurrences) → Schedule/Send → Email tracked → Opens/clicks recorded → Activities auto-logged
 - **Success criteria**:
   - Emails sent with automatic tracking of opens and clicks
   - Email history visible per contact and per deal with filtering
@@ -67,11 +67,27 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
     - Schedule emails for specific date and time in the future
     - Validation prevents scheduling in the past (minimum 5 minutes ahead)
     - Scheduled status badge with scheduled time display
-    - Automatic sending when scheduled time arrives (checked every 10 seconds)
+    - Automatic sending when scheduled time arrives (checked every 30 seconds)
     - Cancel scheduled emails before sending
     - View all scheduled emails in history with distinctive visual treatment
     - Scheduled emails convert to sent status at scheduled time
     - Activities logged when scheduled email is sent
+  - Recurring email patterns:
+    - Support for daily, weekly, and monthly recurrence
+    - Configurable interval (e.g., every 2 days, every 3 weeks)
+    - Multiple end conditions:
+      - Never (continues indefinitely until manually stopped)
+      - End date (stop after specific date)
+      - After N occurrences (e.g., send 5 times then stop)
+    - Visual preview of recurrence pattern in Norwegian
+    - Automatic calculation of next scheduled send time
+    - Series tracking showing occurrence count
+    - Separate visual treatment for recurring vs one-time scheduled emails
+    - Stop/cancel recurring series with single action
+    - Parent-child relationship tracking for recurring email instances
+    - Each sent occurrence logged as separate email with tracking
+    - Recurring emails shown in dedicated section with purple badges
+    - Display next send time and series progress
   - File attachment support with drag-and-drop interface
   - Multiple file uploads with comprehensive validation:
     - Maximum 10 MB per individual file

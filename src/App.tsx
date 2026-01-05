@@ -6,6 +6,7 @@ import ContactsView from '@/components/ContactsView'
 import PipelineView from '@/components/PipelineView'
 import TasksView from '@/components/TasksView'
 import EmailsView from '@/components/EmailsView'
+import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
 import { Toaster } from '@/components/ui/sonner'
 
 type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails'
@@ -80,6 +81,7 @@ function App() {
       </main>
 
       <Toaster position="top-right" />
+      <ScheduledEmailsManager />
     </div>
   )
 }

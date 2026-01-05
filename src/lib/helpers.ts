@@ -1,5 +1,6 @@
-import { format, parseISO, isAfter, isBefore, startOfDay } from 'date-fns'
+import { format, parseISO, isAfter, isBefore, startOfDay, addDays, addWeeks, addMonths } from 'date-fns'
 import { nb } from 'date-fns/locale'
+import type { RecurrencePattern, EmailRecurrence } from './types'
 
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -137,4 +138,58 @@ export function validateEmail(email: string): boolean {
 export function validatePhone(phone: string): boolean {
   const phoneRegex = /^[\d\s+()-]+$/
   return phone.length >= 8 && phoneRegex.test(phone)
+}
+
+export function calculateNextScheduledDate(
+  currentDate: string | Date,
+  pattern: RecurrencePattern,
+  interval: number = 1
+): Date {
+  const baseDate = typeof currentDate === 'string' ? parseISO(currentDate) : currentDate
+  
+  switch (pattern) {
+    case 'daily':
+      return addDays(baseDate, interval)
+    case 'weekly':
+      return addWeeks(baseDate, interval)
+    case 'monthly':
+      return addMonths(baseDate, interval)
+    case 'none':
+    default:
+      return baseDate
+  }
+}
+
+export function shouldSendRecurringEmail(
+  recurrence: EmailRecurrence,
+  currentOccurrences: number
+): boolean {
+  if (recurrence.pattern === 'none') return false
+  
+  if (recurrence.endAfterOccurrences && currentOccurrences >= recurrence.endAfterOccurrences) {
+    return false
+  }
+  
+  if (recurrence.endDate) {
+    const endDate = parseISO(recurrence.endDate)
+    const nextScheduled = recurrence.nextScheduledAt ? parseISO(recurrence.nextScheduledAt) : new Date()
+    if (isAfter(nextScheduled, endDate)) {
+      return false
+    }
+  }
+  
+  return true
+}
+
+export function formatRecurrencePattern(pattern: RecurrencePattern, interval: number = 1): string {
+  if (pattern === 'none') return 'Ingen gjentakelse'
+  
+  const patterns: Record<RecurrencePattern, string> = {
+    none: 'Ingen gjentakelse',
+    daily: interval === 1 ? 'Daglig' : `Hver ${interval}. dag`,
+    weekly: interval === 1 ? 'Ukentlig' : `Hver ${interval}. uke`,
+    monthly: interval === 1 ? 'Månedlig' : `Hver ${interval}. måned`,
+  }
+  
+  return patterns[pattern] || 'Ingen gjentakelse'
 }

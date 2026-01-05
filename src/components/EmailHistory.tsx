@@ -14,7 +14,8 @@ import {
   File,
   DownloadSimple,
   X as XIcon,
-  PencilSimple
+  PencilSimple,
+  Repeat
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import { formatDate, formatRelativeDate, formatDateTime } from '@/lib/helpers'
+import { formatDate, formatRelativeDate, formatDateTime, formatRecurrencePattern } from '@/lib/helpers'
 import type { Email, Contact, EmailStatus, Activity } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -308,7 +309,7 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                           </Badge>
                         </div>
 
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                           {email.status === 'scheduled' && email.scheduledAt ? (
                             <div className="flex items-center gap-1 font-medium text-blue-700">
                               <Clock size={14} />
@@ -318,6 +319,12 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                             <div className="flex items-center gap-1">
                               <Clock size={14} />
                               {formatRelativeDate(email.sentAt || email.createdAt)}
+                            </div>
+                          )}
+                          {email.recurrence && email.recurrence.pattern !== 'none' && (
+                            <div className="flex items-center gap-1 font-medium text-purple-700">
+                              <Repeat size={14} weight="bold" />
+                              {formatRecurrencePattern(email.recurrence.pattern, email.recurrence.interval)}
                             </div>
                           )}
                           {email.attachments && email.attachments.length > 0 && (
@@ -364,6 +371,31 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                                         <p className="text-sm text-blue-700">
                                           {formatDateTime(email.scheduledAt)}
                                         </p>
+                                        {email.recurrence && email.recurrence.pattern !== 'none' && (
+                                          <div className="mt-2 pt-2 border-t border-blue-200">
+                                            <div className="flex items-center gap-2 text-purple-700">
+                                              <Repeat size={16} weight="bold" />
+                                              <span className="text-xs font-medium">
+                                                {formatRecurrencePattern(email.recurrence.pattern, email.recurrence.interval)}
+                                              </span>
+                                            </div>
+                                            {email.recurrence.endDate && (
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                Slutter: {formatDate(email.recurrence.endDate)}
+                                              </p>
+                                            )}
+                                            {email.recurrence.endAfterOccurrences && (
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                Totalt: {email.recurrence.endAfterOccurrences} ganger
+                                              </p>
+                                            )}
+                                            {email.recurrence.occurrenceCount !== undefined && email.recurrence.occurrenceCount > 0 && (
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                Sendt: {email.recurrence.occurrenceCount} ganger
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                       <Button
                                         variant="destructive"
@@ -375,7 +407,10 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                                         className="gap-2"
                                       >
                                         <XIcon size={14} />
-                                        {t.email.cancelSchedule}
+                                        {email.recurrence && email.recurrence.pattern !== 'none' 
+                                          ? t.email.stopRecurrence 
+                                          : t.email.cancelSchedule
+                                        }
                                       </Button>
                                     </div>
                                   </div>

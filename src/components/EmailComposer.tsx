@@ -10,7 +10,8 @@ import {
   ListBullets,
   File,
   Trash,
-  Info
+  Info,
+  Repeat
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -25,7 +26,8 @@ import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import type { Email, EmailTemplate, Contact, Activity, EmailAttachment } from '@/lib/types'
+import { calculateNextScheduledDate } from '@/lib/helpers'
+import type { Email, EmailTemplate, Contact, Activity, EmailAttachment, RecurrencePattern } from '@/lib/types'
 
 interface EmailComposerProps {
   isOpen: boolean
@@ -68,6 +70,12 @@ export default function EmailComposer({
   const [scheduleMode, setScheduleMode] = useState(false)
   const [scheduledDate, setScheduledDate] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false)
+  const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>('none')
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1)
+  const [recurrenceEndType, setRecurrenceEndType] = useState<'never' | 'date' | 'after'>('never')
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('')
+  const [recurrenceEndAfter, setRecurrenceEndAfter] = useState(5)
 
   const safeContacts = contacts || []
   const safeEmails = emails || []
@@ -342,6 +350,16 @@ export default function EmailComposer({
         toast.error('Planlagt tid må være i fremtiden')
         return
       }
+
+      if (recurrenceEnabled && recurrencePattern === 'none') {
+        toast.error('Vennligst velg et gjentagelsesmønster')
+        return
+      }
+
+      if (recurrenceEnabled && recurrenceEndType === 'date' && !recurrenceEndDate) {
+        toast.error('Vennligst velg en sluttdato for gjentakelsen')
+        return
+      }
     }
 
     setIsSending(true)
@@ -372,6 +390,14 @@ export default function EmailComposer({
         attachments: attachments.length > 0 ? attachments : undefined,
         scheduledAt: scheduledAtISO,
         sentAt: scheduled ? undefined : now,
+        recurrence: recurrenceEnabled && scheduled ? {
+          pattern: recurrencePattern,
+          interval: recurrenceInterval,
+          endDate: recurrenceEndType === 'date' ? recurrenceEndDate : undefined,
+          endAfterOccurrences: recurrenceEndType === 'after' ? recurrenceEndAfter : undefined,
+          occurrenceCount: 0,
+          nextScheduledAt: scheduledAtISO
+        } : undefined,
         createdAt: now,
         updatedAt: now
       }
@@ -403,7 +429,11 @@ export default function EmailComposer({
 
         toast.success(t.email.sendSuccess)
       } else {
-        toast.success(t.email.scheduleSuccess)
+        if (recurrenceEnabled && recurrencePattern !== 'none') {
+          toast.success(`${t.email.scheduleSuccess} - ${t.email.recurring}`)
+        } else {
+          toast.success(t.email.scheduleSuccess)
+        }
       }
 
       handleClose()
@@ -500,6 +530,12 @@ export default function EmailComposer({
     setScheduleMode(false)
     setScheduledDate('')
     setScheduledTime('')
+    setRecurrenceEnabled(false)
+    setRecurrencePattern('none')
+    setRecurrenceInterval(1)
+    setRecurrenceEndType('never')
+    setRecurrenceEndDate('')
+    setRecurrenceEndAfter(5)
     onClose()
   }
 
@@ -879,7 +915,7 @@ export default function EmailComposer({
           <div className="flex gap-3 pt-4">
             {scheduleMode ? (
               <>
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 space-y-4">
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <Label htmlFor="schedule-date" className="text-xs">
@@ -907,10 +943,175 @@ export default function EmailComposer({
                       />
                     </div>
                   </div>
+
+                  <div className="p-4 bg-muted/50 rounded-lg space-y-4 border-2 border-dashed border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="recurrence"
+                          checked={recurrenceEnabled}
+                          onCheckedChange={setRecurrenceEnabled}
+                        />
+                        <Label htmlFor="recurrence" className="cursor-pointer font-medium">
+                          {t.email.recurrenceEnabled}
+                        </Label>
+                      </div>
+                      {recurrenceEnabled && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Repeat size={14} />
+                          {t.email.recurring}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {recurrenceEnabled && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-4 overflow-hidden"
+                        >
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="pattern" className="text-xs">
+                                {t.email.recurrencePattern}
+                              </Label>
+                              <Select
+                                value={recurrencePattern}
+                                onValueChange={(value) => setRecurrencePattern(value as RecurrencePattern)}
+                              >
+                                <SelectTrigger id="pattern" className="mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="daily">{t.email.recurrenceDaily}</SelectItem>
+                                  <SelectItem value="weekly">{t.email.recurrenceWeekly}</SelectItem>
+                                  <SelectItem value="monthly">{t.email.recurrenceMonthly}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="interval" className="text-xs">
+                                {t.email.recurrenceInterval}
+                              </Label>
+                              <Input
+                                id="interval"
+                                type="number"
+                                min="1"
+                                max="30"
+                                value={recurrenceInterval}
+                                onChange={(e) => setRecurrenceInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          <div className="space-y-3">
+                            <Label className="text-xs font-medium">{t.email.recurrenceEndAfter}</Label>
+                            
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                id="end-never"
+                                name="recurrence-end"
+                                checked={recurrenceEndType === 'never'}
+                                onChange={() => setRecurrenceEndType('never')}
+                                className="w-4 h-4"
+                              />
+                              <Label htmlFor="end-never" className="cursor-pointer text-sm font-normal">
+                                Aldri
+                              </Label>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                id="end-date"
+                                name="recurrence-end"
+                                checked={recurrenceEndType === 'date'}
+                                onChange={() => setRecurrenceEndType('date')}
+                                className="w-4 h-4"
+                              />
+                              <Label htmlFor="end-date" className="cursor-pointer text-sm font-normal">
+                                {t.email.recurrenceEndDate}
+                              </Label>
+                              {recurrenceEndType === 'date' && (
+                                <Input
+                                  type="date"
+                                  value={recurrenceEndDate}
+                                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                  min={scheduledDate || getMinDateTime().date}
+                                  className="flex-1"
+                                />
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                id="end-after"
+                                name="recurrence-end"
+                                checked={recurrenceEndType === 'after'}
+                                onChange={() => setRecurrenceEndType('after')}
+                                className="w-4 h-4"
+                              />
+                              <Label htmlFor="end-after" className="cursor-pointer text-sm font-normal">
+                                Etter
+                              </Label>
+                              {recurrenceEndType === 'after' && (
+                                <>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    value={recurrenceEndAfter}
+                                    onChange={(e) => setRecurrenceEndAfter(Math.max(1, parseInt(e.target.value) || 5))}
+                                    className="w-20"
+                                  />
+                                  <span className="text-sm text-muted-foreground">
+                                    {t.email.recurrenceOccurrences}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {recurrencePattern !== 'none' && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="p-3 bg-primary/10 border border-primary/20 rounded-lg"
+                            >
+                              <p className="text-xs font-medium text-primary">
+                                📅 Denne e-posten vil sendes {
+                                  recurrencePattern === 'daily' 
+                                    ? `hver ${recurrenceInterval === 1 ? '' : recurrenceInterval + '. '}dag`
+                                    : recurrencePattern === 'weekly'
+                                    ? `hver ${recurrenceInterval === 1 ? '' : recurrenceInterval + '. '}uke`
+                                    : `hver ${recurrenceInterval === 1 ? '' : recurrenceInterval + '. '}måned`
+                                }
+                                {recurrenceEndType === 'date' && recurrenceEndDate 
+                                  ? ` frem til ${new Date(recurrenceEndDate).toLocaleDateString('nb-NO')}`
+                                  : recurrenceEndType === 'after'
+                                  ? ` ${recurrenceEndAfter} ganger`
+                                  : ' på ubestemt tid'
+                                }
+                              </p>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleSend(true)}
-                      disabled={isSending || !scheduledDate || !scheduledTime}
+                      disabled={isSending || !scheduledDate || !scheduledTime || (recurrenceEnabled && recurrencePattern === 'none')}
                       className="flex-1 gap-2"
                     >
                       {isSending ? (
@@ -925,8 +1126,8 @@ export default function EmailComposer({
                         </>
                       ) : (
                         <>
-                          <Clock size={18} weight="fill" />
-                          {t.email.schedule}
+                          {recurrenceEnabled ? <Repeat size={18} weight="bold" /> : <Clock size={18} weight="fill" />}
+                          {recurrenceEnabled ? t.email.recurring : t.email.schedule}
                         </>
                       )}
                     </Button>
@@ -936,6 +1137,8 @@ export default function EmailComposer({
                         setScheduleMode(false)
                         setScheduledDate('')
                         setScheduledTime('')
+                        setRecurrenceEnabled(false)
+                        setRecurrencePattern('none')
                       }}
                     >
                       {t.common.cancel}

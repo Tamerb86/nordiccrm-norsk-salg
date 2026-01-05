@@ -100,6 +100,18 @@ export interface EmailTemplate {
   updatedAt: string
 }
 
+export type RecurrencePattern = 'none' | 'daily' | 'weekly' | 'monthly'
+
+export interface EmailRecurrence {
+  pattern: RecurrencePattern
+  interval: number
+  endDate?: string
+  endAfterOccurrences?: number
+  occurrenceCount?: number
+  nextScheduledAt?: string
+  parentEmailId?: string
+}
+
 export interface Email {
   id: string
   contactId: string
@@ -122,6 +134,7 @@ export interface Email {
   openCount: number
   clickCount: number
   attachments?: EmailAttachment[]
+  recurrence?: EmailRecurrence
   createdAt: string
   updatedAt: string
 }
