@@ -2,17 +2,20 @@ import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { formatCurrency, formatNumber, calculateConversionRate } from '@/lib/helpers'
-import type { Contact, Deal, Task } from '@/lib/types'
-import { Users, CurrencyCircleDollar, Target, CheckCircle } from '@phosphor-icons/react'
+import type { Contact, Deal, Task, Activity } from '@/lib/types'
+import { Users, CurrencyCircleDollar, Target, CheckCircle, Phone, EnvelopeSimple, CalendarDots } from '@phosphor-icons/react'
+import ActivityTimeline from '@/components/ActivityTimeline'
 
 export default function Dashboard() {
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [deals] = useKV<Deal[]>('deals', [])
   const [tasks] = useKV<Task[]>('tasks', [])
+  const [activities] = useKV<Activity[]>('activities', [])
 
   const safeContacts = contacts || []
   const safeDeals = deals || []
   const safeTasks = tasks || []
+  const safeActivities = activities || []
 
   const openDeals = safeDeals.filter(d => !d.actualCloseDate)
   const wonDeals = safeDeals.filter(d => d.actualCloseDate && !d.lostReason)
@@ -21,6 +24,15 @@ export default function Dashboard() {
   const conversionRate = calculateConversionRate(wonDeals.length, safeDeals.length)
   
   const pendingTasks = safeTasks.filter(t => !t.completed)
+
+  const today = new Date()
+  const todayStart = new Date(today.setHours(0, 0, 0, 0))
+  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+  const activitiesThisWeek = safeActivities.filter(a => new Date(a.createdAt) >= weekAgo)
+  const callsThisWeek = activitiesThisWeek.filter(a => a.type === 'call').length
+  const emailsThisWeek = activitiesThisWeek.filter(a => a.type === 'email').length
+  const meetingsThisWeek = activitiesThisWeek.filter(a => a.type === 'meeting').length
 
   const metrics = [
     {
@@ -75,6 +87,44 @@ export default function Dashboard() {
         })}
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Samtaler denne uken
+            </CardTitle>
+            <Phone size={20} className="text-blue-600" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(callsThisWeek)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              E-poster denne uken
+            </CardTitle>
+            <EnvelopeSimple size={20} className="text-purple-600" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(emailsThisWeek)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Møter denne uken
+            </CardTitle>
+            <CalendarDots size={20} className="text-green-600" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(meetingsThisWeek)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -122,6 +172,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {safeActivities.length > 0 && (
+        <ActivityTimeline limit={10} showFilters={true} />
+      )}
 
       {safeContacts.length === 0 && safeDeals.length === 0 && (
         <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-dashed">

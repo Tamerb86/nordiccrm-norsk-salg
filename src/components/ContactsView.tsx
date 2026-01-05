@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, MagnifyingGlass, Pencil, Trash } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Pencil, Trash, Eye } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,12 +13,14 @@ import { toast } from 'sonner'
 import { norwegianTranslations as t, statusLabels } from '@/lib/norwegian'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
 import type { Contact, ContactStatus } from '@/lib/types'
+import ContactDetailView from '@/components/ContactDetailView'
 
 export default function ContactsView() {
   const [contacts, setContacts] = useKV<Contact[]>('contacts', [])
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  const [viewingContactId, setViewingContactId] = useState<string | null>(null)
 
   const safeContacts = contacts || []
   const filteredContacts = filterBySearch(safeContacts, searchTerm, ['firstName', 'lastName', 'email', 'company', 'tags'])
@@ -175,11 +177,18 @@ export default function ContactsView() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => openEditDialog(contact)}
+                  onClick={() => setViewingContactId(contact.id)}
                   className="flex-1"
                 >
+                  <Eye size={16} />
+                  Vis
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEditDialog(contact)}
+                >
                   <Pencil size={16} />
-                  {t.common.edit}
                 </Button>
                 <Button
                   variant="outline"
@@ -198,6 +207,12 @@ export default function ContactsView() {
           </Card>
         ))}
       </div>
+
+      <ContactDetailView
+        contactId={viewingContactId}
+        isOpen={viewingContactId !== null}
+        onClose={() => setViewingContactId(null)}
+      />
     </div>
   )
 }

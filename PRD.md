@@ -33,12 +33,19 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 - **Progression**: Create task → Link to contact → Set due date → Receive reminder → Mark complete → Logs to history
 - **Success criteria**: Overdue tasks highlighted, reminders delivered, completion tracked per user
 
-### Communication Hub
-- **Functionality**: Log calls, emails, meetings, and notes; view complete interaction timeline
-- **Purpose**: Maintain full context of customer relationships
-- **Trigger**: User clicks "Logg aktivitet" from contact page
-- **Progression**: Select type (call/email/note) → Add details → Tag participants → Save → Appears in timeline
-- **Success criteria**: All interactions timestamped, searchable, filterable by type
+### Communication Hub & Activity Logging
+- **Functionality**: Comprehensive activity logging for calls, emails, meetings, and notes linked to deals and contacts; complete interaction timeline with filtering and search
+- **Purpose**: Maintain full context of customer relationships and sales activities with detailed tracking
+- **Trigger**: User clicks "Logg aktivitet" from deal detail view or contact page
+- **Progression**: Select type (call/email/meeting/note) → Add subject → Set duration → Choose outcome → Add notes → Save → Appears in timeline with visual indicators
+- **Success criteria**: 
+  - All interactions timestamped and linked to both contact and deal
+  - Activities searchable and filterable by type
+  - Timeline displays with color-coded activity types (blue=call, purple=email, green=meeting, gray=note)
+  - Outcome tracking (successful, follow-up needed, no answer, voicemail, scheduled meeting, not interested)
+  - Duration tracking in minutes for time management
+  - Weekly activity metrics visible in dashboard
+  - Activity counts per deal visible in deal detail view
 
 ### Reporting Dashboard
 - **Functionality**: Visual reports on leads, deals, revenue, and team performance

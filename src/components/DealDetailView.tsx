@@ -41,6 +41,7 @@ import {
 } from '@/lib/helpers'
 import type { Deal, Contact, PipelineStage, Activity, Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import ActivityLogger from '@/components/ActivityLogger'
 
 interface DealDetailViewProps {
   dealId: string | null
@@ -266,45 +267,7 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
                 </CardContent>
               </Card>
 
-              {dealActivities.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ClockCounterClockwise size={20} weight="duotone" />
-                      Nylig aktivitet
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {dealActivities.map((activity) => (
-                        <motion.div
-                          key={activity.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="flex gap-3 pb-3 border-b last:border-0 last:pb-0"
-                        >
-                          <div className="mt-1">
-                            <Badge variant="outline" className="text-xs">
-                              {activityTypeLabels[activity.type]}
-                            </Badge>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{activity.subject}</p>
-                            {activity.notes && (
-                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                {activity.notes}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatRelativeDate(activity.createdAt)}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {dealId && <ActivityLogger dealId={dealId} contactId={contact.id} />}
 
               {dealTasks.length > 0 && (
                 <Card>
