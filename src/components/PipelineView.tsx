@@ -1,6 +1,7 @@
 import { useState, DragEvent } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Plus } from '@phosphor-icons/react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -43,6 +44,8 @@ export default function PipelineView() {
   }
 
   const handleStageChange = (dealId: string, newStage: string) => {
+    const oldStage = safeDeals.find(d => d.id === dealId)?.stage
+    
     setDeals((current) =>
       (current || []).map((d) =>
         d.id === dealId
@@ -55,7 +58,10 @@ export default function PipelineView() {
           : d
       )
     )
-    toast.success('Avtale flyttet')
+    
+    const oldStageName = safeStages.find(s => s.id === oldStage)?.name || ''
+    const newStageName = safeStages.find(s => s.id === newStage)?.name || ''
+    toast.success(`Avtale flyttet fra ${oldStageName} til ${newStageName}`)
   }
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, dealId: string) => {
@@ -163,86 +169,138 @@ export default function PipelineView() {
           const isDropTarget = dragOverStage === stage.id
           
           return (
-            <div 
+            <motion.div 
               key={stage.id} 
               className={cn(
                 "space-y-3 p-3 rounded-lg transition-all",
                 isDropTarget && "bg-accent/20 ring-2 ring-accent"
               )}
+              animate={{
+                scale: isDropTarget ? 1.02 : 1,
+                backgroundColor: isDropTarget ? 'oklch(0.65 0.15 160 / 0.1)' : 'transparent'
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
               onDragOver={handleDragOver}
               onDragEnter={() => handleDragEnter(stage.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, stage.id)}
             >
-              <Card className="bg-muted/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                    <span>{stage.name}</span>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {stageDeals.length}
-                    </span>
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {formatCurrency(stageValue)}
-                  </p>
-                </CardHeader>
-              </Card>
+              <motion.div
+                layout
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                      <span>{stage.name}</span>
+                      <motion.span 
+                        key={`count-${stage.id}-${stageDeals.length}`}
+                        initial={{ scale: 1.5, color: 'oklch(0.65 0.15 160)' }}
+                        animate={{ scale: 1, color: 'oklch(0.556 0 0)' }}
+                        transition={{ duration: 0.3 }}
+                        className="text-xs font-mono text-muted-foreground"
+                      >
+                        {stageDeals.length}
+                      </motion.span>
+                    </CardTitle>
+                    <motion.p 
+                      key={`value-${stage.id}-${stageValue}`}
+                      initial={{ scale: 1.1 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-xs text-muted-foreground font-mono"
+                    >
+                      {formatCurrency(stageValue)}
+                    </motion.p>
+                  </CardHeader>
+                </Card>
+              </motion.div>
 
               <div className="space-y-2 min-h-[100px]">
-                {stageDeals.map((deal) => (
-                  <Card 
-                    key={deal.id} 
-                    className={cn(
-                      "hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
-                      draggedDeal === deal.id && "opacity-50"
-                    )}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, deal.id)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <CardContent className="p-4 space-y-2">
-                      <h4 className="font-semibold text-sm">{deal.title}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {getContactName(deal.contactId)}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm font-semibold">
-                          {formatCurrency(deal.value)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {deal.probability}%
-                        </span>
-                      </div>
-                      <Select
-                        value={deal.stage}
-                        onValueChange={(value) => handleStageChange(deal.id, value)}
+                <AnimatePresence mode="popLayout">
+                  {stageDeals.map((deal) => (
+                    <motion.div
+                      key={deal.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                      animate={{ 
+                        opacity: draggedDeal === deal.id ? 0.5 : 1, 
+                        scale: 1, 
+                        y: 0 
+                      }}
+                      exit={{ opacity: 0, scale: 0.8, x: 100 }}
+                      transition={{ 
+                        type: "spring", 
+                        stiffness: 300, 
+                        damping: 30,
+                        opacity: { duration: 0.2 }
+                      }}
+                    >
+                      <Card 
+                        className={cn(
+                          "hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing",
+                          draggedDeal === deal.id && "shadow-lg"
+                        )}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, deal.id)}
+                        onDragEnd={handleDragEnd}
                       >
-                        <SelectTrigger className="h-7 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {safeStages.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <CardContent className="p-4 space-y-2">
+                          <h4 className="font-semibold text-sm">{deal.title}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {getContactName(deal.contactId)}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-sm font-semibold">
+                              {formatCurrency(deal.value)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {deal.probability}%
+                            </span>
+                          </div>
+                          <Select
+                            value={deal.stage}
+                            onValueChange={(value) => handleStageChange(deal.id, value)}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {safeStages.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
                 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => openNewDealDialog(stage.id)}
+                <motion.div
+                  animate={{
+                    scale: isDropTarget ? [1, 1.05, 1] : 1,
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: isDropTarget ? Infinity : 0,
+                    repeatType: "reverse"
+                  }}
                 >
-                  <Plus size={16} />
-                  Ny avtale
-                </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => openNewDealDialog(stage.id)}
+                  >
+                    <Plus size={16} />
+                    Ny avtale
+                  </Button>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
           )
         })}
       </div>
