@@ -1,6 +1,6 @@
-import { useState, DragEvent } from 'react'
+import { useState, DragEvent, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, Eye, EyeSlash } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash, FunnelSimple, X } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,11 +10,21 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { norwegianTranslations as t, defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
+
+interface DealFilters {
+  minValue: string
+  maxValue: string
+  startDate: string
+  endDate: string
+  contactId: string
+  searchText: string
+}
 
 export default function PipelineView() {
   const [deals, setDeals] = useKV<Deal[]>('deals', [])
@@ -25,6 +35,15 @@ export default function PipelineView() {
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [showClosedDeals, setShowClosedDeals] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<DealFilters>({
+    minValue: '',
+    maxValue: '',
+    startDate: '',
+    endDate: '',
+    contactId: '',
+    searchText: '',
+  })
 
   const safeDeals = deals || []
   const safeContacts = contacts || []
@@ -35,10 +54,83 @@ export default function PipelineView() {
   
   const openDeals = safeDeals.filter(d => !d.actualCloseDate)
   const closedDeals = safeDeals.filter(d => d.actualCloseDate)
+
+  const getContactName = (contactId: string): string => {
+    const contact = safeContacts.find(c => c.id === contactId)
+    return contact ? getFullName(contact.firstName, contact.lastName) : 'Ukjent kontakt'
+  }
+  
+  const filteredDeals = useMemo(() => {
+    let filtered = safeDeals
+
+    if (filters.minValue) {
+      const min = parseFloat(filters.minValue)
+      filtered = filtered.filter(d => d.value >= min)
+    }
+
+    if (filters.maxValue) {
+      const max = parseFloat(filters.maxValue)
+      filtered = filtered.filter(d => d.value <= max)
+    }
+
+    if (filters.startDate) {
+      filtered = filtered.filter(d => {
+        const dealDate = d.expectedCloseDate || d.createdAt
+        return dealDate >= filters.startDate
+      })
+    }
+
+    if (filters.endDate) {
+      filtered = filtered.filter(d => {
+        const dealDate = d.expectedCloseDate || d.createdAt
+        return dealDate <= filters.endDate
+      })
+    }
+
+    if (filters.contactId) {
+      filtered = filtered.filter(d => d.contactId === filters.contactId)
+    }
+
+    if (filters.searchText) {
+      const search = filters.searchText.toLowerCase()
+      filtered = filtered.filter(d => {
+        const contactName = getContactName(d.contactId).toLowerCase()
+        return d.title.toLowerCase().includes(search) || 
+               contactName.includes(search) ||
+               (d.description?.toLowerCase().includes(search))
+      })
+    }
+
+    return filtered
+  }, [safeDeals, safeContacts, filters])
+
+  const filteredOpenDeals = filteredDeals.filter(d => !d.actualCloseDate)
+  const filteredClosedDeals = filteredDeals.filter(d => d.actualCloseDate)
   
   const displayStages = showClosedDeals 
     ? [...activePipelineStages, ...closedStages]
     : activePipelineStages
+
+  const activeFilterCount = [
+    filters.minValue,
+    filters.maxValue,
+    filters.startDate,
+    filters.endDate,
+    filters.contactId,
+    filters.searchText,
+  ].filter(Boolean).length
+
+  const clearFilters = () => {
+    setFilters({
+      minValue: '',
+      maxValue: '',
+      startDate: '',
+      endDate: '',
+      contactId: '',
+      searchText: '',
+    })
+    toast.success('Filtre fjernet')
+  }
 
   const handleSaveDeal = (deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newDeal: Deal = {
@@ -114,11 +206,6 @@ export default function PipelineView() {
     setDraggedDeal(null)
   }
 
-  const getContactName = (contactId: string): string => {
-    const contact = safeContacts.find(c => c.id === contactId)
-    return contact ? getFullName(contact.firstName, contact.lastName) : 'Ukjent kontakt'
-  }
-
   const openNewDealDialog = (stageId: string) => {
     setSelectedStage(stageId)
     setIsDialogOpen(true)
@@ -130,11 +217,34 @@ export default function PipelineView() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{t.pipeline.title}</h2>
           <p className="text-muted-foreground mt-1">
-            {openDeals.length} {t.deal.open.toLowerCase()}
-            {closedDeals.length > 0 && ` • ${closedDeals.length} lukket`}
+            {filteredOpenDeals.length} {t.deal.open.toLowerCase()}
+            {filteredClosedDeals.length > 0 && ` • ${filteredClosedDeals.length} lukket`}
+            {activeFilterCount > 0 && ` • ${activeFilterCount} filter aktiv`}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              size="lg"
+              onClick={() => setShowFilters(!showFilters)}
+              className="relative"
+            >
+              <FunnelSimple size={20} weight={showFilters ? 'fill' : 'regular'} />
+              Filtrer
+              {activeFilterCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                >
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+          </motion.div>
           <motion.div 
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50"
             whileHover={{ scale: 1.02 }}
@@ -154,7 +264,7 @@ export default function PipelineView() {
               ) : (
                 <EyeSlash size={18} weight="duotone" />
               )}
-              Vis lukkede avtaler
+              Vis lukkede
             </Label>
           </motion.div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -180,7 +290,183 @@ export default function PipelineView() {
         </div>
       </div>
 
-      {openDeals.length === 0 && (
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -20 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <Card className="bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <FunnelSimple size={20} weight="duotone" />
+                    Filtreringsalternativer
+                  </h3>
+                  {activeFilterCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearFilters}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X size={16} />
+                      Fjern alle filtre
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="search-text">Søk etter navn eller beskrivelse</Label>
+                    <Input
+                      id="search-text"
+                      placeholder="Søk..."
+                      value={filters.searchText}
+                      onChange={(e) => setFilters({ ...filters, searchText: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-filter">Filtrer etter kontakt</Label>
+                    <Select 
+                      value={filters.contactId} 
+                      onValueChange={(value) => setFilters({ ...filters, contactId: value })}
+                    >
+                      <SelectTrigger id="contact-filter">
+                        <SelectValue placeholder="Alle kontakter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Alle kontakter</SelectItem>
+                        {safeContacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {getFullName(contact.firstName, contact.lastName)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="min-value">Min verdi (NOK)</Label>
+                    <Input
+                      id="min-value"
+                      type="number"
+                      placeholder="0"
+                      value={filters.minValue}
+                      onChange={(e) => setFilters({ ...filters, minValue: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max-value">Maks verdi (NOK)</Label>
+                    <Input
+                      id="max-value"
+                      type="number"
+                      placeholder="Ingen grense"
+                      value={filters.maxValue}
+                      onChange={(e) => setFilters({ ...filters, maxValue: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="start-date">Fra dato</Label>
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="end-date">Til dato</Label>
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {activeFilterCount > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 flex flex-wrap gap-2"
+                  >
+                    {filters.searchText && (
+                      <Badge variant="secondary" className="gap-1">
+                        Søk: {filters.searchText}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, searchText: '' })}
+                        />
+                      </Badge>
+                    )}
+                    {filters.contactId && (
+                      <Badge variant="secondary" className="gap-1">
+                        Kontakt: {getContactName(filters.contactId)}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, contactId: '' })}
+                        />
+                      </Badge>
+                    )}
+                    {filters.minValue && (
+                      <Badge variant="secondary" className="gap-1">
+                        Min: {formatCurrency(parseFloat(filters.minValue))}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, minValue: '' })}
+                        />
+                      </Badge>
+                    )}
+                    {filters.maxValue && (
+                      <Badge variant="secondary" className="gap-1">
+                        Maks: {formatCurrency(parseFloat(filters.maxValue))}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, maxValue: '' })}
+                        />
+                      </Badge>
+                    )}
+                    {filters.startDate && (
+                      <Badge variant="secondary" className="gap-1">
+                        Fra: {new Date(filters.startDate).toLocaleDateString('nb-NO')}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, startDate: '' })}
+                        />
+                      </Badge>
+                    )}
+                    {filters.endDate && (
+                      <Badge variant="secondary" className="gap-1">
+                        Til: {new Date(filters.endDate).toLocaleDateString('nb-NO')}
+                        <X 
+                          size={14} 
+                          className="cursor-pointer hover:text-destructive" 
+                          onClick={() => setFilters({ ...filters, endDate: '' })}
+                        />
+                      </Badge>
+                    )}
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {filteredOpenDeals.length === 0 && activeFilterCount === 0 && (
         <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-dashed">
           <CardContent className="py-12 text-center">
             <Plus size={48} className="mx-auto text-muted-foreground mb-4" weight="duotone" />
@@ -196,13 +482,29 @@ export default function PipelineView() {
         </Card>
       )}
 
+      {filteredOpenDeals.length === 0 && activeFilterCount > 0 && (
+        <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-dashed">
+          <CardContent className="py-12 text-center">
+            <FunnelSimple size={48} className="mx-auto text-muted-foreground mb-4" weight="duotone" />
+            <h3 className="text-lg font-semibold mb-2">Ingen avtaler matcher filtrene</h3>
+            <p className="text-muted-foreground mb-4">
+              Prøv å endre eller fjerne noen filtreringsalternativer
+            </p>
+            <Button variant="outline" onClick={clearFilters}>
+              <X size={20} />
+              Fjern alle filtre
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <AnimatePresence mode="popLayout">
           {displayStages.map((stage) => {
             const isClosedStage = stage.id === 'won' || stage.id === 'lost'
             const stageDeals = isClosedStage 
-              ? closedDeals.filter(d => d.stage === stage.id)
-              : openDeals.filter(d => d.stage === stage.id)
+              ? filteredClosedDeals.filter(d => d.stage === stage.id)
+              : filteredOpenDeals.filter(d => d.stage === stage.id)
             const stageValue = stageDeals.reduce((sum, d) => sum + d.value, 0)
             const isDropTarget = dragOverStage === stage.id
             
