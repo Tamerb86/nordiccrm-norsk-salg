@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   PaperPlaneRight,
@@ -29,7 +29,7 @@ import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { calculateNextScheduledDate, replaceTemplateVariables, getTemplateVariablePreview } from '@/lib/helpers'
 import TemplateVariableInserter from '@/components/TemplateVariableInserter'
-import type { Email, EmailTemplate, Contact, Activity, EmailAttachment, RecurrencePattern } from '@/lib/types'
+import type { Email, EmailTemplate, Contact, Activity, EmailAttachment, RecurrencePattern, CustomTemplateVariable } from '@/lib/types'
 
 interface EmailComposerProps {
   isOpen: boolean
@@ -52,6 +52,7 @@ export default function EmailComposer({
   const [emails, setEmails] = useKV<Email[]>('emails', [])
   const [templates, setTemplates] = useKV<EmailTemplate[]>('email-templates', [])
   const [activities, setActivities] = useKV<Activity[]>('activities', [])
+  const [customVariables] = useKV<CustomTemplateVariable[]>('custom-template-variables', [])
 
   const [to, setTo] = useState(initialTo)
   const [cc, setCc] = useState('')
@@ -600,8 +601,33 @@ export default function EmailComposer({
     }
   }
 
-  const previewSubject = currentContact ? replaceTemplateVariables(subject, currentContact) : getTemplateVariablePreview(subject)
-  const previewBody = currentContact ? replaceTemplateVariables(body, currentContact) : getTemplateVariablePreview(body)
+  const previewContact = {
+    firstName: 'Ola',
+    lastName: 'Nordmann',
+    email: 'ola@eksempel.no',
+    phone: '+47 123 45 678',
+    company: 'Eksempel AS',
+    status: 'Kunde',
+    value: 50000
+  }
+
+  const customPreviewValues = useMemo(() => {
+    const values: Record<string, string> = {}
+    if (customVariables) {
+      customVariables.forEach((v) => {
+        values[v.key] = v.example
+      })
+    }
+    return values
+  }, [customVariables])
+
+  const previewSubject = currentContact 
+    ? replaceTemplateVariables(subject, currentContact, customPreviewValues) 
+    : replaceTemplateVariables(subject, previewContact, customPreviewValues)
+  
+  const previewBody = currentContact 
+    ? replaceTemplateVariables(body, currentContact, customPreviewValues) 
+    : replaceTemplateVariables(body, previewContact, customPreviewValues)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

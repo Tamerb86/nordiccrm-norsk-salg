@@ -8,8 +8,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useState } from 'react'
+import { Separator } from '@/components/ui/separator'
+import { useState, useMemo } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { availableTemplateVariables, type TemplateVariable } from '@/lib/helpers'
+import type { CustomTemplateVariable } from '@/lib/types'
 
 interface TemplateVariableInserterProps {
   onInsert: (variable: string) => void
@@ -24,12 +27,22 @@ export default function TemplateVariableInserter({
 }: TemplateVariableInserterProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [open, setOpen] = useState(false)
+  const [customVariables] = useKV<CustomTemplateVariable[]>('custom-template-variables', [])
 
-  const filteredVariables = availableTemplateVariables.filter((variable) =>
+  const allVariables = useMemo(() => {
+    const systemVars = availableTemplateVariables.map(v => ({ ...v, isCustom: false }))
+    const customVars = (customVariables || []).map(v => ({ ...v, isCustom: true }))
+    return [...systemVars, ...customVars]
+  }, [customVariables])
+
+  const filteredVariables = allVariables.filter((variable) =>
     variable.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
     variable.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
     variable.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const systemVariables = filteredVariables.filter(v => !(v as any).isCustom)
+  const customFilteredVariables = filteredVariables.filter(v => (v as any).isCustom)
 
   const handleInsert = (variable: TemplateVariable) => {
     onInsert(`{${variable.key}}`)
@@ -68,33 +81,83 @@ export default function TemplateVariableInserter({
           </div>
         </div>
 
-        <ScrollArea className="h-[320px]">
+        <ScrollArea className="h-[400px]">
           <div className="p-2">
             {filteredVariables.length > 0 ? (
-              <div className="space-y-1">
-                {filteredVariables.map((variable) => (
-                  <button
-                    key={variable.key}
-                    onClick={() => handleInsert(variable)}
-                    className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors group"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-medium text-sm">{variable.label}</span>
-                      <Badge 
-                        variant="secondary" 
-                        className="text-xs font-mono shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                      >
-                        {`{${variable.key}}`}
-                      </Badge>
+              <div className="space-y-3">
+                {systemVariables.length > 0 && (
+                  <div>
+                    <div className="px-3 py-2">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Systemvariabler
+                      </h4>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {variable.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-medium">Eksempel:</span> {variable.example}
-                    </p>
-                  </button>
-                ))}
+                    <div className="space-y-1">
+                      {systemVariables.map((variable) => (
+                        <button
+                          key={variable.key}
+                          onClick={() => handleInsert(variable)}
+                          className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors group"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="font-medium text-sm">{variable.label}</span>
+                            <Badge 
+                              variant="secondary" 
+                              className="text-xs font-mono shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                            >
+                              {`{${variable.key}}`}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {variable.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium">Eksempel:</span> {variable.example}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {systemVariables.length > 0 && customFilteredVariables.length > 0 && (
+                  <Separator className="my-2" />
+                )}
+
+                {customFilteredVariables.length > 0 && (
+                  <div>
+                    <div className="px-3 py-2">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Egendefinerte variabler
+                      </h4>
+                    </div>
+                    <div className="space-y-1">
+                      {customFilteredVariables.map((variable) => (
+                        <button
+                          key={variable.key}
+                          onClick={() => handleInsert(variable)}
+                          className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors group"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <span className="font-medium text-sm">{variable.label}</span>
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs font-mono shrink-0 group-hover:bg-accent group-hover:text-accent-foreground transition-colors"
+                            >
+                              {`{${variable.key}}`}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {variable.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium">Eksempel:</span> {variable.example}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">

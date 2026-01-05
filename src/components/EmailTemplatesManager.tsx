@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   Plus,
@@ -18,9 +18,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { norwegianTranslations as t } from '@/lib/norwegian'
-import { formatRelativeDate, getTemplateVariablePreview } from '@/lib/helpers'
+import { formatRelativeDate, replaceTemplateVariables } from '@/lib/helpers'
 import TemplateVariableInserter from '@/components/TemplateVariableInserter'
-import type { EmailTemplate } from '@/lib/types'
+import type { EmailTemplate, CustomTemplateVariable } from '@/lib/types'
 
 interface EmailTemplatesManagerProps {
   onSelectTemplate?: (template: EmailTemplate) => void
@@ -28,6 +28,7 @@ interface EmailTemplatesManagerProps {
 
 export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplatesManagerProps) {
   const [templates, setTemplates] = useKV<EmailTemplate[]>('email-templates', [])
+  const [customVariables] = useKV<CustomTemplateVariable[]>('custom-template-variables', [])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
   const [templateName, setTemplateName] = useState('')
@@ -39,6 +40,29 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const safeTemplates = templates || []
+
+  const customPreviewValues = useMemo(() => {
+    const values: Record<string, string> = {}
+    if (customVariables) {
+      customVariables.forEach((v) => {
+        values[v.key] = v.example
+      })
+    }
+    return values
+  }, [customVariables])
+
+  const previewContact = {
+    firstName: 'Ola',
+    lastName: 'Nordmann',
+    email: 'ola@eksempel.no',
+    phone: '+47 123 45 678',
+    company: 'Eksempel AS',
+    status: 'Kunde',
+    value: 50000
+  }
+
+  const previewSubject = replaceTemplateVariables(templateSubject, previewContact, customPreviewValues)
+  const previewBody = replaceTemplateVariables(templateBody, previewContact, customPreviewValues)
 
   const handleOpenDialog = (template?: EmailTemplate) => {
     if (template) {
@@ -169,8 +193,7 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
     }
   }
 
-  const previewSubject = getTemplateVariablePreview(templateSubject)
-  const previewBody = getTemplateVariablePreview(templateBody)
+  const categories = Array.from(new Set(safeTemplates.map(t => t.category).filter(Boolean)))
 
   if (safeTemplates.length === 0 && !isDialogOpen) {
     return (
@@ -186,8 +209,6 @@ export default function EmailTemplatesManager({ onSelectTemplate }: EmailTemplat
       </Card>
     )
   }
-
-  const categories = Array.from(new Set(safeTemplates.map(t => t.category).filter(Boolean)))
 
   return (
     <div className="space-y-4">

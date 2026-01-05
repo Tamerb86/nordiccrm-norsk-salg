@@ -146,3 +146,13 @@ export interface EmailAttachment {
   type: string
   url?: string
 }
+
+export interface CustomTemplateVariable {
+  id: string
+  key: string
+  label: string
+  description: string
+  example: string
+  createdAt: string
+  updatedAt: string
+}

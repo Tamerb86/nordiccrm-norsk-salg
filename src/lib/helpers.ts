@@ -268,7 +268,8 @@ export function replaceTemplateVariables(
     company?: string
     status?: string
     value?: number
-  }
+  },
+  customValues?: Record<string, string>
 ): string {
   let result = text
 
@@ -288,8 +289,14 @@ export function replaceTemplateVariables(
     '{today}': format(new Date(), 'dd.MM.yyyy', { locale: nb })
   }
 
+  if (customValues) {
+    Object.entries(customValues).forEach(([key, value]) => {
+      replacements[`{${key}}`] = value
+    })
+  }
+
   Object.entries(replacements).forEach(([key, value]) => {
-    result = result.replace(new RegExp(key, 'g'), value)
+    result = result.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value)
   })
 
   return result

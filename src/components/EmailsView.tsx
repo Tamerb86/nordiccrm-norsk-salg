@@ -12,6 +12,7 @@ import type { Email } from '@/lib/types'
 import EmailComposer from '@/components/EmailComposer'
 import EmailHistory from '@/components/EmailHistory'
 import EmailTemplatesManager from '@/components/EmailTemplatesManager'
+import CustomTemplateVariablesManager from '@/components/CustomTemplateVariablesManager'
 
 export default function EmailsView() {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
@@ -136,9 +137,10 @@ export default function EmailsView() {
       )}
 
       <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
           <TabsTrigger value="history">{t.email.history}</TabsTrigger>
           <TabsTrigger value="templates">{t.email.templates}</TabsTrigger>
+          <TabsTrigger value="variables">Variabler</TabsTrigger>
         </TabsList>
 
         <TabsContent value="history" className="mt-6">
@@ -147,6 +149,10 @@ export default function EmailsView() {
 
         <TabsContent value="templates" className="mt-6">
           <EmailTemplatesManager />
+        </TabsContent>
+
+        <TabsContent value="variables" className="mt-6">
+          <CustomTemplateVariablesManager />
         </TabsContent>
       </Tabs>
 
