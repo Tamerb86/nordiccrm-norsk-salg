@@ -17,7 +17,8 @@ import {
   CheckCircle,
   XCircle,
   TrendUp,
-  ArrowRight
+  ArrowRight,
+  PaperPlaneRight
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { norwegianTranslations as t, activityTypeLabels } from '@/lib/norwegian'
 import { 
@@ -42,6 +44,8 @@ import {
 import type { Deal, Contact, PipelineStage, Activity, Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import ActivityLogger from '@/components/ActivityLogger'
+import EmailComposer from '@/components/EmailComposer'
+import EmailHistory from '@/components/EmailHistory'
 
 interface DealDetailViewProps {
   dealId: string | null
@@ -57,6 +61,7 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
   const [activities] = useKV<Activity[]>('activities', [])
   const [tasks] = useKV<Task[]>('tasks', [])
   const [isEditing, setIsEditing] = useState(false)
+  const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false)
 
   const safeDeals = deals || []
   const safeContacts = contacts || []
@@ -124,6 +129,7 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
   const probabilityWeightedValue = (deal.value * deal.probability) / 100
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0">
         <div className="sticky top-0 z-10 bg-background border-b">
@@ -159,6 +165,16 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {contact.email && (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsEmailComposerOpen(true)}
+                    className="gap-2"
+                  >
+                    <PaperPlaneRight size={16} weight="duotone" />
+                    Send e-post
+                  </Button>
+                )}
                 {!isClosedDeal && (
                   <Button
                     variant="outline"
@@ -267,7 +283,18 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
                 </CardContent>
               </Card>
 
-              {dealId && <ActivityLogger dealId={dealId} contactId={contact.id} />}
+              <Tabs defaultValue="activity" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="activity">Aktivitetslogg</TabsTrigger>
+                  <TabsTrigger value="emails">E-poster</TabsTrigger>
+                </TabsList>
+                <TabsContent value="activity">
+                  {dealId && <ActivityLogger dealId={dealId} contactId={contact.id} />}
+                </TabsContent>
+                <TabsContent value="emails">
+                  {dealId && <EmailHistory dealId={dealId} />}
+                </TabsContent>
+              </Tabs>
 
               {dealTasks.length > 0 && (
                 <Card>
@@ -431,6 +458,18 @@ export default function DealDetailView({ dealId, isOpen, onClose, onUpdate }: De
         )}
       </DialogContent>
     </Dialog>
+
+    {contact.email && (
+      <EmailComposer
+        isOpen={isEmailComposerOpen}
+        onClose={() => setIsEmailComposerOpen(false)}
+        contactId={contact.id}
+        dealId={dealId || undefined}
+        initialTo={contact.email}
+        initialSubject={`Angående ${deal.title}`}
+      />
+    )}
+  </>
   )
 }
 

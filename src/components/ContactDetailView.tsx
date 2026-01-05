@@ -9,7 +9,8 @@ import {
   Tag,
   ClockCounterClockwise,
   Target,
-  Plus
+  Plus,
+  PaperPlaneRight
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { norwegianTranslations as t, statusLabels } from '@/lib/norwegian'
 import { 
@@ -30,6 +32,8 @@ import {
 import type { Contact, Deal } from '@/lib/types'
 import ActivityTimeline from '@/components/ActivityTimeline'
 import ActivityLogger from '@/components/ActivityLogger'
+import EmailComposer from '@/components/EmailComposer'
+import EmailHistory from '@/components/EmailHistory'
 import { cn } from '@/lib/utils'
 
 interface ContactDetailViewProps {
@@ -42,6 +46,7 @@ interface ContactDetailViewProps {
 export default function ContactDetailView({ contactId, isOpen, onClose, onUpdate }: ContactDetailViewProps) {
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [deals] = useKV<Deal[]>('deals', [])
+  const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false)
 
   const safeContacts = contacts || []
   const safeDeals = deals || []
@@ -60,35 +65,45 @@ export default function ContactDetailView({ contactId, isOpen, onClose, onUpdate
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-0">
-        <div className="sticky top-0 z-10 bg-background border-b">
-          <DialogHeader className="px-6 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-2xl flex-shrink-0">
-                  {getInitials(contact.firstName, contact.lastName)}
-                </div>
-                <div className="flex-1">
-                  <DialogTitle className="text-2xl font-bold mb-1">
-                    {getFullName(contact.firstName, contact.lastName)}
-                  </DialogTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={getStatusColor(contact.status)}>
-                      {statusLabels[contact.status]}
-                    </Badge>
-                    {contact.company && (
-                      <Badge variant="outline">
-                        <Buildings size={14} className="mr-1" />
-                        {contact.company}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 bg-background border-b">
+            <DialogHeader className="px-6 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-2xl flex-shrink-0">
+                    {getInitials(contact.firstName, contact.lastName)}
+                  </div>
+                  <div className="flex-1">
+                    <DialogTitle className="text-2xl font-bold mb-1">
+                      {getFullName(contact.firstName, contact.lastName)}
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={getStatusColor(contact.status)}>
+                        {statusLabels[contact.status]}
                       </Badge>
-                    )}
+                      {contact.company && (
+                        <Badge variant="outline">
+                          <Buildings size={14} className="mr-1" />
+                          {contact.company}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
+                {contact.email && (
+                  <Button
+                    onClick={() => setIsEmailComposerOpen(true)}
+                    className="gap-2"
+                  >
+                    <PaperPlaneRight size={18} weight="duotone" />
+                    Send e-post
+                  </Button>
+                )}
               </div>
-            </div>
-          </DialogHeader>
-        </div>
+            </DialogHeader>
+          </div>
 
         <div className="px-6 py-6 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -239,23 +254,46 @@ export default function ContactDetailView({ contactId, isOpen, onClose, onUpdate
             </div>
 
             <div className="lg:col-span-2 space-y-6">
-              {contactId && contactDeals.length > 0 && contactDeals[0] && (
-                <ActivityLogger 
-                  dealId={contactDeals[0].id} 
-                  contactId={contactId} 
-                />
-              )}
-              
-              {contactId && (
-                <ActivityTimeline 
-                  contactId={contactId} 
-                  showFilters={true}
-                />
-              )}
+              <Tabs defaultValue="activity" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="activity">Aktiviteter</TabsTrigger>
+                  <TabsTrigger value="emails">E-poster</TabsTrigger>
+                </TabsList>
+                <TabsContent value="activity" className="space-y-6">
+                  {contactId && contactDeals.length > 0 && contactDeals[0] && (
+                    <ActivityLogger 
+                      dealId={contactDeals[0].id} 
+                      contactId={contactId} 
+                    />
+                  )}
+                  
+                  {contactId && (
+                    <ActivityTimeline 
+                      contactId={contactId} 
+                      showFilters={true}
+                    />
+                  )}
+                </TabsContent>
+                <TabsContent value="emails">
+                  {contactId && <EmailHistory contactId={contactId} />}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    {contact.email && (
+      <EmailComposer
+        isOpen={isEmailComposerOpen}
+        onClose={() => setIsEmailComposerOpen(false)}
+        contactId={contactId || undefined}
+        dealId={contactDeals[0]?.id}
+        initialTo={contact.email}
+        initialSubject={`Angående ${contact.company || 'din henvendelse'}`}
+      />
+    )}
+  </>
   )
 }

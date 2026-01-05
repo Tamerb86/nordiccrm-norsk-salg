@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { Users, ChartBar, Target, ListChecks, House } from '@phosphor-icons/react'
+import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple } from '@phosphor-icons/react'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import Dashboard from '@/components/Dashboard'
 import ContactsView from '@/components/ContactsView'
 import PipelineView from '@/components/PipelineView'
 import TasksView from '@/components/TasksView'
+import EmailsView from '@/components/EmailsView'
 import { Toaster } from '@/components/ui/sonner'
 
-type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks'
+type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -17,6 +18,7 @@ function App() {
     { id: 'contacts' as View, label: t.nav.contacts, icon: Users },
     { id: 'pipeline' as View, label: t.nav.pipeline, icon: Target },
     { id: 'tasks' as View, label: t.nav.tasks, icon: ListChecks },
+    { id: 'emails' as View, label: t.email.title, icon: EnvelopeSimple },
   ]
 
   return (
@@ -74,6 +76,7 @@ function App() {
         {currentView === 'contacts' && <ContactsView />}
         {currentView === 'pipeline' && <PipelineView />}
         {currentView === 'tasks' && <TasksView />}
+        {currentView === 'emails' && <EmailsView />}
       </main>
 
       <Toaster position="top-right" />

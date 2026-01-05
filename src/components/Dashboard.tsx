@@ -2,8 +2,8 @@ import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { formatCurrency, formatNumber, calculateConversionRate } from '@/lib/helpers'
-import type { Contact, Deal, Task, Activity } from '@/lib/types'
-import { Users, CurrencyCircleDollar, Target, CheckCircle, Phone, EnvelopeSimple, CalendarDots } from '@phosphor-icons/react'
+import type { Contact, Deal, Task, Activity, Email } from '@/lib/types'
+import { Users, CurrencyCircleDollar, Target, CheckCircle, Phone, EnvelopeSimple, CalendarDots, EnvelopeOpen, CursorClick } from '@phosphor-icons/react'
 import ActivityTimeline from '@/components/ActivityTimeline'
 
 export default function Dashboard() {
@@ -11,11 +11,13 @@ export default function Dashboard() {
   const [deals] = useKV<Deal[]>('deals', [])
   const [tasks] = useKV<Task[]>('tasks', [])
   const [activities] = useKV<Activity[]>('activities', [])
+  const [emails] = useKV<Email[]>('emails', [])
 
   const safeContacts = contacts || []
   const safeDeals = deals || []
   const safeTasks = tasks || []
   const safeActivities = activities || []
+  const safeEmails = emails || []
 
   const openDeals = safeDeals.filter(d => !d.actualCloseDate)
   const wonDeals = safeDeals.filter(d => d.actualCloseDate && !d.lostReason)
@@ -31,8 +33,14 @@ export default function Dashboard() {
 
   const activitiesThisWeek = safeActivities.filter(a => new Date(a.createdAt) >= weekAgo)
   const callsThisWeek = activitiesThisWeek.filter(a => a.type === 'call').length
-  const emailsThisWeek = activitiesThisWeek.filter(a => a.type === 'email').length
+  const emailsThisWeek = activitiesThisWeek.filter(a => a.type === 'email' || a.type === 'email-sent').length
   const meetingsThisWeek = activitiesThisWeek.filter(a => a.type === 'meeting').length
+
+  const sentEmails = safeEmails.filter(e => e.status === 'sent' || e.status === 'delivered' || e.status === 'opened' || e.status === 'clicked')
+  const openedEmails = safeEmails.filter(e => e.status === 'opened' || e.status === 'clicked')
+  const clickedEmails = safeEmails.filter(e => e.status === 'clicked')
+  const emailOpenRate = sentEmails.length > 0 ? Math.round((openedEmails.length / sentEmails.length) * 100) : 0
+  const emailClickRate = sentEmails.length > 0 ? Math.round((clickedEmails.length / sentEmails.length) * 100) : 0
 
   const metrics = [
     {
@@ -121,6 +129,50 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatNumber(meetingsThisWeek)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              E-poster sendt
+            </CardTitle>
+            <EnvelopeSimple size={20} className="text-blue-600" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(sentEmails.length)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Åpningsrate
+            </CardTitle>
+            <EnvelopeOpen size={20} className="text-purple-600" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{emailOpenRate}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {openedEmails.length} av {sentEmails.length} åpnet
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Klikkrate
+            </CardTitle>
+            <CursorClick size={20} className="text-accent" weight="duotone" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{emailClickRate}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {clickedEmails.length} av {sentEmails.length} klikket
+            </p>
           </CardContent>
         </Card>
       </div>

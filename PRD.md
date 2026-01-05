@@ -47,12 +47,29 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Weekly activity metrics visible in dashboard
   - Activity counts per deal visible in deal detail view
 
+### Email Integration
+- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM
+- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions
+- **Trigger**: User clicks "Send e-post" button from contact detail, deal detail, or dedicated emails view
+- **Progression**: Click send email → Fill recipient/subject/body → Enable tracking → Send → Email tracked → Opens/clicks recorded → Activities auto-logged
+- **Success criteria**:
+  - Emails sent with automatic tracking of opens and clicks
+  - Email history visible per contact and per deal with filtering
+  - Email templates for common scenarios (follow-up, proposal, meeting confirmation)
+  - Template management with categories and quick-use functionality
+  - Auto-logging of email activities (sent, opened, clicked) to timeline
+  - Visual email status indicators (sent, delivered, opened, clicked, failed)
+  - Email performance metrics on dashboard (sent count, open rate, click rate)
+  - Cc/Bcc support with validation
+  - Save-as-template option during compose
+  - Email search across all communications
+
 ### Reporting Dashboard
-- **Functionality**: Visual reports on leads, deals, revenue, and team performance
+- **Functionality**: Visual reports on leads, deals, revenue, team performance, and email metrics
 - **Purpose**: Data-driven decision making and performance tracking
 - **Trigger**: User navigates to dashboard or reports section
 - **Progression**: View dashboard → See key metrics → Filter by date/user → Export data → Analyze trends
-- **Success criteria**: Accurate calculations, real-time data, NOK currency formatting
+- **Success criteria**: Accurate calculations, real-time data, NOK currency formatting, email engagement metrics
 
 ## Edge Case Handling
 - **Empty States**: Helpful onboarding messages with action buttons when no contacts/deals exist

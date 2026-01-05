@@ -1,6 +1,6 @@
 export type ContactStatus = 'lead' | 'prospect' | 'customer' | 'lost'
 
-export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'status-change'
+export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'status-change' | 'email-sent' | 'email-opened' | 'email-clicked'
 
 export type TaskType = 'call' | 'email' | 'meeting' | 'follow-up' | 'other'
 
@@ -86,4 +86,50 @@ export interface DashboardMetrics {
   lostDeals: number
   averageDealValue: number
   conversionRate: number
+}
+
+export type EmailStatus = 'draft' | 'sending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'failed' | 'bounced'
+
+export interface EmailTemplate {
+  id: string
+  name: string
+  subject: string
+  body: string
+  category?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Email {
+  id: string
+  contactId: string
+  dealId?: string
+  from: string
+  to: string
+  cc?: string[]
+  bcc?: string[]
+  subject: string
+  body: string
+  htmlBody?: string
+  status: EmailStatus
+  templateId?: string
+  scheduledAt?: string
+  sentAt?: string
+  openedAt?: string
+  clickedAt?: string
+  failedReason?: string
+  trackingEnabled: boolean
+  openCount: number
+  clickCount: number
+  attachments?: EmailAttachment[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EmailAttachment {
+  id: string
+  name: string
+  size: number
+  type: string
+  url?: string
 }
