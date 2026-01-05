@@ -65,6 +65,9 @@ export default function EmailComposer({
   const [attachments, setAttachments] = useState<EmailAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [scheduleMode, setScheduleMode] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
 
   const safeContacts = contacts || []
   const safeEmails = emails || []
@@ -305,7 +308,7 @@ export default function EmailComposer({
     handleFileSelect(e.dataTransfer.files)
   }
 
-  const handleSend = async () => {
+  const handleSend = async (scheduled = false) => {
     if (!to.trim()) {
       toast.error('Vennligst fyll inn mottaker')
       return
@@ -326,11 +329,31 @@ export default function EmailComposer({
       return
     }
 
+    if (scheduled) {
+      if (!scheduledDate || !scheduledTime) {
+        toast.error('Vennligst velg dato og tid for planlagt sending')
+        return
+      }
+
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`)
+      const now = new Date()
+      
+      if (scheduledDateTime <= now) {
+        toast.error('Planlagt tid må være i fremtiden')
+        return
+      }
+    }
+
     setIsSending(true)
 
     try {
       const emailId = crypto.randomUUID()
       const now = new Date().toISOString()
+      
+      let scheduledAtISO: string | undefined
+      if (scheduled && scheduledDate && scheduledTime) {
+        scheduledAtISO = new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+      }
 
       const newEmail: Email = {
         id: emailId,
@@ -342,44 +365,50 @@ export default function EmailComposer({
         bcc: bcc ? bcc.split(',').map(e => e.trim()) : undefined,
         subject: subject.trim(),
         body: body.trim(),
-        status: 'sent',
+        status: scheduled ? 'scheduled' : 'sent',
         trackingEnabled,
         openCount: 0,
         clickCount: 0,
         attachments: attachments.length > 0 ? attachments : undefined,
-        sentAt: now,
+        scheduledAt: scheduledAtISO,
+        sentAt: scheduled ? undefined : now,
         createdAt: now,
         updatedAt: now
       }
 
       await setEmails((current) => [...(current || []), newEmail])
 
-      const activity: Activity = {
-        id: crypto.randomUUID(),
-        type: 'email-sent',
-        contactId: contactId || '',
-        dealId,
-        subject: `E-post sendt: ${subject}`,
-        notes: body.substring(0, 200) + (body.length > 200 ? '...' : ''),
-        createdBy: 'Deg',
-        createdAt: now,
-        metadata: {
-          emailId,
-          to: to.trim(),
-          trackingEnabled
+      if (!scheduled) {
+        const activity: Activity = {
+          id: crypto.randomUUID(),
+          type: 'email-sent',
+          contactId: contactId || '',
+          dealId,
+          subject: `E-post sendt: ${subject}`,
+          notes: body.substring(0, 200) + (body.length > 200 ? '...' : ''),
+          createdBy: 'Deg',
+          createdAt: now,
+          metadata: {
+            emailId,
+            to: to.trim(),
+            trackingEnabled
+          }
         }
+
+        await setActivities((current) => [...(current || []), activity])
+
+        if (trackingEnabled) {
+          simulateEmailTracking(emailId)
+        }
+
+        toast.success(t.email.sendSuccess)
+      } else {
+        toast.success(t.email.scheduleSuccess)
       }
 
-      await setActivities((current) => [...(current || []), activity])
-
-      if (trackingEnabled) {
-        simulateEmailTracking(emailId)
-      }
-
-      toast.success(t.email.sendSuccess)
       handleClose()
     } catch (error) {
-      toast.error(t.email.sendError)
+      toast.error(scheduled ? 'Kunne ikke planlegge e-post' : t.email.sendError)
       console.error('Email send error:', error)
     } finally {
       setIsSending(false)
@@ -468,7 +497,19 @@ export default function EmailComposer({
     setTemplateName('')
     setAttachments([])
     setIsDragging(false)
+    setScheduleMode(false)
+    setScheduledDate('')
+    setScheduledTime('')
     onClose()
+  }
+
+  const getMinDateTime = () => {
+    const now = new Date()
+    now.setMinutes(now.getMinutes() + 5)
+    return {
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().slice(0, 5)
+    }
   }
 
   return (
@@ -836,31 +877,110 @@ export default function EmailComposer({
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button
-              onClick={handleSend}
-              disabled={isSending}
-              className="flex-1 gap-2"
-            >
-              {isSending ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <PaperPlaneRight size={18} />
-                  </motion.div>
-                  Sender...
-                </>
-              ) : (
-                <>
-                  <PaperPlaneRight size={18} weight="fill" />
-                  {t.email.send}
-                </>
-              )}
-            </Button>
-            <Button variant="outline" onClick={handleClose}>
-              {t.common.cancel}
-            </Button>
+            {scheduleMode ? (
+              <>
+                <div className="flex-1 space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <Label htmlFor="schedule-date" className="text-xs">
+                        {t.email.scheduleDate}
+                      </Label>
+                      <Input
+                        id="schedule-date"
+                        type="date"
+                        value={scheduledDate}
+                        onChange={(e) => setScheduledDate(e.target.value)}
+                        min={getMinDateTime().date}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Label htmlFor="schedule-time" className="text-xs">
+                        {t.email.scheduleTime}
+                      </Label>
+                      <Input
+                        id="schedule-time"
+                        type="time"
+                        value={scheduledTime}
+                        onChange={(e) => setScheduledTime(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleSend(true)}
+                      disabled={isSending || !scheduledDate || !scheduledTime}
+                      className="flex-1 gap-2"
+                    >
+                      {isSending ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          >
+                            <Clock size={18} />
+                          </motion.div>
+                          Planlegger...
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={18} weight="fill" />
+                          {t.email.schedule}
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setScheduleMode(false)
+                        setScheduledDate('')
+                        setScheduledTime('')
+                      }}
+                    >
+                      {t.common.cancel}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => handleSend(false)}
+                  disabled={isSending}
+                  className="flex-1 gap-2"
+                >
+                  {isSending ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <PaperPlaneRight size={18} />
+                      </motion.div>
+                      Sender...
+                    </>
+                  ) : (
+                    <>
+                      <PaperPlaneRight size={18} weight="fill" />
+                      {t.email.sendNow}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setScheduleMode(true)}
+                  disabled={isSending}
+                  className="gap-2"
+                >
+                  <Clock size={18} />
+                  {t.email.schedule}
+                </Button>
+                <Button variant="outline" onClick={handleClose}>
+                  {t.common.cancel}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </DialogContent>

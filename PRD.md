@@ -48,21 +48,30 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Activity counts per deal visible in deal detail view
 
 ### Email Integration
-- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM; file attachment support with drag-and-drop upload, comprehensive file type validation, and size restrictions
-- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions; enable sending documents, proposals, and files directly from CRM with security controls
+- **Functionality**: Complete email management system with compose, send, track, and template management capabilities directly within the CRM; file attachment support with drag-and-drop upload, comprehensive file type validation, and size restrictions; email scheduling to send emails at specific future times
+- **Purpose**: Centralize email communication with customers, track engagement, and maintain email history alongside other interactions; enable sending documents, proposals, and files directly from CRM with security controls; schedule emails for optimal timing
 - **Trigger**: User clicks "Send e-post" button from contact detail, deal detail, or dedicated emails view
-- **Progression**: Click send email → Fill recipient/subject/body → Attach files (drag-drop or click) → Preview attachments with file type badges → Enable tracking → Send → Email tracked → Opens/clicks recorded → Activities auto-logged
+- **Progression**: Click send email → Fill recipient/subject/body → Attach files (drag-drop or click) → Preview attachments with file type badges → Enable tracking → Choose send now or schedule → (If scheduling) Select date/time → Schedule/Send → Email tracked → Opens/clicks recorded → Activities auto-logged
 - **Success criteria**:
   - Emails sent with automatic tracking of opens and clicks
   - Email history visible per contact and per deal with filtering
   - Email templates for common scenarios (follow-up, proposal, meeting confirmation)
   - Template management with categories and quick-use functionality
   - Auto-logging of email activities (sent, opened, clicked) to timeline
-  - Visual email status indicators (sent, delivered, opened, clicked, failed)
+  - Visual email status indicators (scheduled, sent, delivered, opened, clicked, failed)
   - Email performance metrics on dashboard (sent count, open rate, click rate)
   - Cc/Bcc support with validation
   - Save-as-template option during compose
   - Email search across all communications
+  - Email scheduling functionality:
+    - Schedule emails for specific date and time in the future
+    - Validation prevents scheduling in the past (minimum 5 minutes ahead)
+    - Scheduled status badge with scheduled time display
+    - Automatic sending when scheduled time arrives (checked every 10 seconds)
+    - Cancel scheduled emails before sending
+    - View all scheduled emails in history with distinctive visual treatment
+    - Scheduled emails convert to sent status at scheduled time
+    - Activities logged when scheduled email is sent
   - File attachment support with drag-and-drop interface
   - Multiple file uploads with comprehensive validation:
     - Maximum 10 MB per individual file

@@ -88,7 +88,7 @@ export interface DashboardMetrics {
   conversionRate: number
 }
 
-export type EmailStatus = 'draft' | 'sending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'failed' | 'bounced'
+export type EmailStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'failed' | 'bounced'
 
 export interface EmailTemplate {
   id: string

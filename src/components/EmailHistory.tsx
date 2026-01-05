@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import {
   EnvelopeSimple,
@@ -12,7 +12,9 @@ import {
   MagnifyingGlass,
   Paperclip,
   File,
-  DownloadSimple
+  DownloadSimple,
+  X as XIcon,
+  PencilSimple
 } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,8 +24,9 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { formatDate, formatRelativeDate, formatDateTime } from '@/lib/helpers'
-import type { Email, Contact, EmailStatus } from '@/lib/types'
+import type { Email, Contact, EmailStatus, Activity } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface EmailHistoryProps {
   contactId?: string
@@ -33,6 +36,7 @@ interface EmailHistoryProps {
 
 const statusConfig: Record<EmailStatus, { label: string; icon: any; color: string }> = {
   draft: { label: 'Utkast', icon: EnvelopeSimple, color: 'bg-muted text-muted-foreground' },
+  scheduled: { label: 'Planlagt', icon: Clock, color: 'bg-blue-100 text-blue-700' },
   sending: { label: 'Sender...', icon: Clock, color: 'bg-blue-100 text-blue-700' },
   sent: { label: 'Sendt', icon: CheckCircle, color: 'bg-green-100 text-green-700' },
   delivered: { label: 'Levert', icon: CheckCircle, color: 'bg-green-100 text-green-700' },
@@ -43,13 +47,147 @@ const statusConfig: Record<EmailStatus, { label: string; icon: any; color: strin
 }
 
 export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryProps) {
-  const [emails] = useKV<Email[]>('emails', [])
+  const [emails, setEmails] = useKV<Email[]>('emails', [])
   const [contacts] = useKV<Contact[]>('contacts', [])
+  const [activities, setActivities] = useKV<Activity[]>('activities', [])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
 
   const safeEmails = emails || []
   const safeContacts = contacts || []
+  const safeActivities = activities || []
+
+  useEffect(() => {
+    const checkScheduledEmails = setInterval(() => {
+      const now = new Date()
+      safeEmails.forEach(async (email) => {
+        if (email.status === 'scheduled' && email.scheduledAt) {
+          const scheduledTime = new Date(email.scheduledAt)
+          if (scheduledTime <= now) {
+            await sendScheduledEmail(email)
+          }
+        }
+      })
+    }, 10000)
+
+    return () => clearInterval(checkScheduledEmails)
+  }, [safeEmails])
+
+  const sendScheduledEmail = async (email: Email) => {
+    const now = new Date().toISOString()
+
+    await setEmails((current) => {
+      return (current || []).map((e) =>
+        e.id === email.id
+          ? {
+              ...e,
+              status: 'sent' as EmailStatus,
+              sentAt: now,
+              updatedAt: now,
+            }
+          : e
+      )
+    })
+
+    const activity: Activity = {
+      id: crypto.randomUUID(),
+      type: 'email-sent',
+      contactId: email.contactId,
+      dealId: email.dealId,
+      subject: `E-post sendt: ${email.subject}`,
+      notes: email.body.substring(0, 200) + (email.body.length > 200 ? '...' : ''),
+      createdBy: 'System',
+      createdAt: now,
+      metadata: {
+        emailId: email.id,
+        to: email.to,
+        trackingEnabled: email.trackingEnabled,
+        wasScheduled: true,
+      },
+    }
+
+    await setActivities((current) => [...(current || []), activity])
+
+    if (email.trackingEnabled) {
+      simulateEmailTracking(email.id)
+    }
+
+    toast.success(`E-post sendt til ${email.to}`)
+  }
+
+  const simulateEmailTracking = async (emailId: string) => {
+    setTimeout(async () => {
+      await setEmails((current) => {
+        return (current || []).map((email) =>
+          email.id === emailId
+            ? {
+                ...email,
+                status: 'opened' as const,
+                openedAt: new Date().toISOString(),
+                openCount: email.openCount + 1,
+                updatedAt: new Date().toISOString(),
+              }
+            : email
+        )
+      })
+
+      const email = safeEmails.find((e) => e.id === emailId)
+      if (email) {
+        const activity: Activity = {
+          id: crypto.randomUUID(),
+          type: 'email-opened',
+          contactId: email.contactId,
+          dealId: email.dealId,
+          subject: `E-post åpnet: ${email.subject}`,
+          createdBy: 'System',
+          createdAt: new Date().toISOString(),
+        }
+        await setActivities((current) => [...(current || []), activity])
+      }
+
+      toast.info('📬 E-post åpnet av mottaker')
+    }, 8000)
+
+    setTimeout(async () => {
+      await setEmails((current) => {
+        return (current || []).map((email) =>
+          email.id === emailId
+            ? {
+                ...email,
+                status: 'clicked' as const,
+                clickedAt: new Date().toISOString(),
+                clickCount: email.clickCount + 1,
+                updatedAt: new Date().toISOString(),
+              }
+            : email
+        )
+      })
+
+      const email = safeEmails.find((e) => e.id === emailId)
+      if (email) {
+        const activity: Activity = {
+          id: crypto.randomUUID(),
+          type: 'email-clicked',
+          contactId: email.contactId,
+          dealId: email.dealId,
+          subject: `Lenke klikket i e-post: ${email.subject}`,
+          createdBy: 'System',
+          createdAt: new Date().toISOString(),
+        }
+        await setActivities((current) => [...(current || []), activity])
+      }
+
+      toast.success('🎯 Mottaker klikket på lenke i e-posten!')
+    }, 15000)
+  }
+
+  const handleCancelScheduled = async (emailId: string) => {
+    await setEmails((current) => {
+      return (current || []).filter((e) => e.id !== emailId)
+    })
+    toast.success(t.email.scheduleCancelled)
+    setSelectedEmailId(null)
+  }
 
   let filteredEmails = safeEmails
     .filter(email => {
@@ -171,17 +309,24 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                         </div>
 
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock size={14} />
-                            {formatRelativeDate(email.sentAt || email.createdAt)}
-                          </div>
+                          {email.status === 'scheduled' && email.scheduledAt ? (
+                            <div className="flex items-center gap-1 font-medium text-blue-700">
+                              <Clock size={14} />
+                              Planlagt: {formatDateTime(email.scheduledAt)}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Clock size={14} />
+                              {formatRelativeDate(email.sentAt || email.createdAt)}
+                            </div>
+                          )}
                           {email.attachments && email.attachments.length > 0 && (
                             <div className="flex items-center gap-1">
                               <Paperclip size={14} />
                               {email.attachments.length} vedlegg
                             </div>
                           )}
-                          {email.trackingEnabled && (
+                          {email.trackingEnabled && email.status !== 'scheduled' && (
                             <>
                               {email.openCount > 0 && (
                                 <div className="flex items-center gap-1">
@@ -209,6 +354,33 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                             >
                               <Separator className="my-3" />
                               <div className="space-y-3">
+                                {email.status === 'scheduled' && email.scheduledAt && (
+                                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium text-blue-900 mb-1">
+                                          {t.email.scheduledFor}
+                                        </p>
+                                        <p className="text-sm text-blue-700">
+                                          {formatDateTime(email.scheduledAt)}
+                                        </p>
+                                      </div>
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleCancelScheduled(email.id)
+                                        }}
+                                        className="gap-2"
+                                      >
+                                        <XIcon size={14} />
+                                        {t.email.cancelSchedule}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+
                                 <div className="text-sm">
                                   <p className="text-muted-foreground mb-1">Melding:</p>
                                   <p className="whitespace-pre-wrap">{email.body}</p>
@@ -250,7 +422,7 @@ export default function EmailHistory({ contactId, dealId, limit }: EmailHistoryP
                                   </div>
                                 )}
 
-                                {email.trackingEnabled && (
+                                {email.trackingEnabled && email.status !== 'scheduled' && (
                                   <div className="grid grid-cols-2 gap-3 p-3 bg-muted rounded-lg text-sm">
                                     <div>
                                       <p className="text-muted-foreground mb-1">Sendt</p>
