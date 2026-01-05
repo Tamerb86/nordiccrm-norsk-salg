@@ -1,6 +1,6 @@
 import { useState, DragEvent } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { norwegianTranslations as t, defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
@@ -23,13 +24,21 @@ export default function PipelineView() {
   const [selectedStage, setSelectedStage] = useState<string>('')
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
+  const [showClosedDeals, setShowClosedDeals] = useState(false)
 
   const safeDeals = deals || []
   const safeContacts = contacts || []
   const safeStages = stages || defaultPipelineStages
 
   const activePipelineStages = safeStages.filter(s => s.id !== 'won' && s.id !== 'lost')
+  const closedStages = safeStages.filter(s => s.id === 'won' || s.id === 'lost')
+  
   const openDeals = safeDeals.filter(d => !d.actualCloseDate)
+  const closedDeals = safeDeals.filter(d => d.actualCloseDate)
+  
+  const displayStages = showClosedDeals 
+    ? [...activePipelineStages, ...closedStages]
+    : activePipelineStages
 
   const handleSaveDeal = (deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newDeal: Deal = {
@@ -117,33 +126,58 @@ export default function PipelineView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{t.pipeline.title}</h2>
           <p className="text-muted-foreground mt-1">
             {openDeals.length} {t.deal.open.toLowerCase()}
+            {closedDeals.length > 0 && ` • ${closedDeals.length} lukket`}
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => openNewDealDialog(activePipelineStages[0]?.id || '')} size="lg">
-              <Plus size={20} weight="bold" />
-              {t.deal.addNew}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t.deal.addNew}</DialogTitle>
-            </DialogHeader>
-            <DealForm
-              contacts={safeContacts}
-              stages={safeStages}
-              initialStage={selectedStage}
-              onSave={handleSaveDeal}
-              onCancel={() => setIsDialogOpen(false)}
+        <div className="flex items-center gap-3">
+          <motion.div 
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Switch
+              id="show-closed"
+              checked={showClosedDeals}
+              onCheckedChange={setShowClosedDeals}
             />
-          </DialogContent>
-        </Dialog>
+            <Label 
+              htmlFor="show-closed" 
+              className="cursor-pointer text-sm font-medium flex items-center gap-2"
+            >
+              {showClosedDeals ? (
+                <Eye size={18} weight="duotone" />
+              ) : (
+                <EyeSlash size={18} weight="duotone" />
+              )}
+              Vis lukkede avtaler
+            </Label>
+          </motion.div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => openNewDealDialog(activePipelineStages[0]?.id || '')} size="lg">
+                <Plus size={20} weight="bold" />
+                {t.deal.addNew}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{t.deal.addNew}</DialogTitle>
+              </DialogHeader>
+              <DealForm
+                contacts={safeContacts}
+                stages={safeStages}
+                initialStage={selectedStage}
+                onSave={handleSaveDeal}
+                onCancel={() => setIsDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {openDeals.length === 0 && (
@@ -163,28 +197,41 @@ export default function PipelineView() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {activePipelineStages.map((stage) => {
-          const stageDeals = openDeals.filter(d => d.stage === stage.id)
-          const stageValue = stageDeals.reduce((sum, d) => sum + d.value, 0)
-          const isDropTarget = dragOverStage === stage.id
-          
-          return (
-            <motion.div 
-              key={stage.id} 
-              className={cn(
-                "space-y-3 p-3 rounded-lg transition-all",
-                isDropTarget && "bg-accent/20 ring-2 ring-accent"
-              )}
-              animate={{
-                scale: isDropTarget ? 1.02 : 1,
-                backgroundColor: isDropTarget ? 'oklch(0.65 0.15 160 / 0.1)' : 'transparent'
-              }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              onDragOver={handleDragOver}
-              onDragEnter={() => handleDragEnter(stage.id)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, stage.id)}
-            >
+        <AnimatePresence mode="popLayout">
+          {displayStages.map((stage) => {
+            const isClosedStage = stage.id === 'won' || stage.id === 'lost'
+            const stageDeals = isClosedStage 
+              ? closedDeals.filter(d => d.stage === stage.id)
+              : openDeals.filter(d => d.stage === stage.id)
+            const stageValue = stageDeals.reduce((sum, d) => sum + d.value, 0)
+            const isDropTarget = dragOverStage === stage.id
+            
+            return (
+              <motion.div 
+                key={stage.id} 
+                className={cn(
+                  "space-y-3 p-3 rounded-lg transition-all",
+                  isDropTarget && "bg-accent/20 ring-2 ring-accent"
+                )}
+                initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: isDropTarget ? 1.02 : 1,
+                  x: 0,
+                  backgroundColor: isDropTarget ? 'oklch(0.65 0.15 160 / 0.1)' : 'transparent'
+                }}
+                exit={{ opacity: 0, scale: 0.9, x: 20 }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 25,
+                  opacity: { duration: 0.3 }
+                }}
+                onDragOver={handleDragOver}
+                onDragEnter={() => handleDragEnter(stage.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, stage.id)}
+              >
               <motion.div
                 layout
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
@@ -238,11 +285,13 @@ export default function PipelineView() {
                     >
                       <Card 
                         className={cn(
-                          "hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing",
-                          draggedDeal === deal.id && "shadow-lg"
+                          "hover:shadow-md transition-shadow",
+                          !isClosedStage && "cursor-grab active:cursor-grabbing",
+                          draggedDeal === deal.id && "shadow-lg",
+                          isClosedStage && "opacity-80"
                         )}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, deal.id)}
+                        draggable={!isClosedStage}
+                        onDragStart={(e) => !isClosedStage && handleDragStart(e, deal.id)}
                         onDragEnd={handleDragEnd}
                       >
                         <CardContent className="p-4 space-y-2">
@@ -258,51 +307,61 @@ export default function PipelineView() {
                               {deal.probability}%
                             </span>
                           </div>
-                          <Select
-                            value={deal.stage}
-                            onValueChange={(value) => handleStageChange(deal.id, value)}
-                          >
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {safeStages.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {!isClosedStage && (
+                            <Select
+                              value={deal.stage}
+                              onValueChange={(value) => handleStageChange(deal.id, value)}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {safeStages.map((s) => (
+                                  <SelectItem key={s.id} value={s.id}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {isClosedStage && deal.actualCloseDate && (
+                            <p className="text-xs text-muted-foreground">
+                              Lukket: {new Date(deal.actualCloseDate).toLocaleDateString('nb-NO')}
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
                   ))}
                 </AnimatePresence>
                 
-                <motion.div
-                  animate={{
-                    scale: isDropTarget ? [1, 1.05, 1] : 1,
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    repeat: isDropTarget ? Infinity : 0,
-                    repeatType: "reverse"
-                  }}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => openNewDealDialog(stage.id)}
+                {!isClosedStage && (
+                  <motion.div
+                    animate={{
+                      scale: isDropTarget ? [1, 1.05, 1] : 1,
+                    }}
+                    transition={{
+                      duration: 0.6,
+                      repeat: isDropTarget ? Infinity : 0,
+                      repeatType: "reverse"
+                    }}
                   >
-                    <Plus size={16} />
-                    Ny avtale
-                  </Button>
-                </motion.div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => openNewDealDialog(stage.id)}
+                    >
+                      <Plus size={16} />
+                      Ny avtale
+                    </Button>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )
         })}
+        </AnimatePresence>
       </div>
     </div>
   )

@@ -182,4 +182,5 @@ export const defaultPipelineStages = [
   { id: 'proposal', name: 'Tilbud sendt', order: 2, probability: 60, color: 'oklch(0.65 0.12 250)' },
   { id: 'negotiation', name: 'Forhandling', order: 3, probability: 80, color: 'oklch(0.60 0.15 160)' },
   { id: 'won', name: 'Vunnet', order: 4, probability: 100, color: 'oklch(0.65 0.15 160)' },
+  { id: 'lost', name: 'Tapt', order: 5, probability: 0, color: 'oklch(0.60 0.15 25)' },
 ]
