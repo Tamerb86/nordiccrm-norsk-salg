@@ -312,6 +312,49 @@ This CRM system fulfills all essential CRM requirements including:
   - Copy-to-clipboard for API keys and secrets
   - Mobile-responsive tabs and cards
 
+### Team Management & Role-Based Access Control
+- **Functionality**: Complete team member management with role-based permissions (Admin, Manager, Sales); invite team members, assign roles, manage permissions, activate/deactivate accounts
+- **Purpose**: Enable multi-user collaboration with appropriate access controls; ensure data security and proper workflow delegation
+- **Trigger**: User navigates to Team section from main navigation
+- **Progression**: 
+  - View team: See all team members with roles and status → Search/filter members
+  - Add member: Click add member → Fill form (name, email, role, phone, title, department) → Select role → Save → Member invited
+  - Edit member: Click edit → Modify details → Change role if needed → Save → Member updated
+  - Manage permissions: Click view permissions → See role-based permission matrix → Understand what each role can do
+  - Activate/Deactivate: Toggle active status → Member access granted/revoked → Status updated
+  - Remove member: Click remove → Confirm → Member removed from team
+- **Success criteria**:
+  - Three distinct roles with different permission levels:
+    - **Admin**: Full access to all features (contacts, deals, tasks, emails, reports, API, team management)
+    - **Manager**: View all data, manage team, limited delete permissions, no role changes
+    - **Sales**: Manage own contacts/deals/tasks, no access to API or team management
+  - Comprehensive permission system covering 7 resource types:
+    - Contacts: view, create, edit, delete, viewAll, exportData, importData
+    - Deals: view, create, edit, delete, viewAll, reassign
+    - Tasks: view, create, edit, delete, viewAll, reassign
+    - Emails: view, send, viewAll, manageTemplates
+    - Reports: view, viewAll, export
+    - API: view, manage
+    - Team: view, invite, edit, remove, changeRoles
+  - Role permissions displayed in visual matrix with checkmarks/X indicators
+  - Team member cards show:
+    - Avatar with initials
+    - Full name and email
+    - Role badge with color coding (Admin=red, Manager=green, Sales=gray)
+    - Job title and department
+    - Active/inactive status with icon
+  - Email uniqueness validation prevents duplicate accounts
+  - Search functionality filters by name, email, department, or title
+  - Empty state with helpful guidance for first team member
+  - All data persists using useKV ('team-members' key)
+  - Norwegian and English translations for all UI elements
+  - Mobile-responsive grid layout (1 column mobile, 2 tablet, 3 desktop)
+  - Inline actions: edit, toggle active, view permissions, remove
+  - Role descriptions help users understand permission levels
+  - Account activation/deactivation without deletion
+  - Timestamps for invited date and last active
+  - Toast notifications for all actions (created, updated, removed, activated, deactivated)
+
 ## Edge Case Handling
 - **Empty States**: Helpful onboarding messages with action buttons when no contacts/deals exist
 - **Duplicate Contacts**: Warning when email/phone matches existing contact during manual entry and CSV import

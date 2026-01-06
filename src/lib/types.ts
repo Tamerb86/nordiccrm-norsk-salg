@@ -236,3 +236,72 @@ export interface WebhookLog {
   errorMessage?: string
   createdAt: string
 }
+
+export type UserRole = 'admin' | 'manager' | 'sales'
+
+export interface TeamMember {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  role: UserRole
+  isActive: boolean
+  avatar?: string
+  phone?: string
+  department?: string
+  title?: string
+  invitedAt: string
+  lastActiveAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RolePermissions {
+  contacts: {
+    view: boolean
+    create: boolean
+    edit: boolean
+    delete: boolean
+    viewAll: boolean
+    exportData: boolean
+    importData: boolean
+  }
+  deals: {
+    view: boolean
+    create: boolean
+    edit: boolean
+    delete: boolean
+    viewAll: boolean
+    reassign: boolean
+  }
+  tasks: {
+    view: boolean
+    create: boolean
+    edit: boolean
+    delete: boolean
+    viewAll: boolean
+    reassign: boolean
+  }
+  emails: {
+    view: boolean
+    send: boolean
+    viewAll: boolean
+    manageTemplates: boolean
+  }
+  reports: {
+    view: boolean
+    viewAll: boolean
+    export: boolean
+  }
+  api: {
+    view: boolean
+    manage: boolean
+  }
+  team: {
+    view: boolean
+    invite: boolean
+    edit: boolean
+    remove: boolean
+    changeRoles: boolean
+  }
+}
