@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, MagnifyingGlass, Pencil, Trash, Eye, Download } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Pencil, Trash, Eye, Download, Upload } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,14 +13,17 @@ import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
 import { exportContactsToCSV } from '@/lib/csv-export'
+import { importContactsFromCSV } from '@/lib/csv-import'
 import type { Contact, ContactStatus } from '@/lib/types'
 import ContactDetailView from '@/components/ContactDetailView'
+import CSVImportDialog from '@/components/CSVImportDialog'
 
 export default function ContactsView() {
   const { t } = useLanguage()
   const [contacts, setContacts] = useKV<Contact[]>('contacts', [])
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [viewingContactId, setViewingContactId] = useState<string | null>(null)
 
@@ -66,6 +69,24 @@ export default function ContactsView() {
     setIsDialogOpen(true)
   }
 
+  const handleImportCSV = async (file: File) => {
+    const reader = new FileReader()
+    return new Promise<any>((resolve) => {
+      reader.onload = (e) => {
+        const csvContent = e.target?.result as string
+        const result = importContactsFromCSV(csvContent, safeContacts)
+        
+        if (result.imported > 0) {
+          setContacts((current) => [...(current || []), ...result.data])
+          toast.success(`${result.imported} ${t.import.imported.toLowerCase()}`)
+        }
+        
+        resolve(result)
+      }
+      reader.readAsText(file)
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -73,7 +94,14 @@ export default function ContactsView() {
           <h2 className="text-3xl font-bold tracking-tight">{t.contact.title}</h2>
           <p className="text-muted-foreground mt-1">{t.contact.all}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            <Upload size={20} weight="bold" />
+            {t.common.import}
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
@@ -83,7 +111,7 @@ export default function ContactsView() {
             disabled={safeContacts.length === 0}
           >
             <Download size={20} weight="bold" />
-            {t.common.exportToCSV}
+            {t.common.export}
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -110,6 +138,15 @@ export default function ContactsView() {
           </Dialog>
         </div>
       </div>
+
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        type="contacts"
+        onImport={handleImportCSV}
+        title={t.import.importContacts}
+        description={t.import.importContactsDesc}
+      />
 
       <div className="relative">
         <MagnifyingGlass

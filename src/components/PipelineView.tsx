@@ -1,6 +1,6 @@
 import { useState, DragEvent, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, Eye, EyeSlash, FunnelSimple, X, Download } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash, FunnelSimple, X, Download, Upload } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,9 +16,11 @@ import { useLanguage } from '@/lib/language-context'
 import { defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
 import { exportDealsToCSV } from '@/lib/csv-export'
+import { importDealsFromCSV } from '@/lib/csv-import'
 import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
 import DealDetailView from '@/components/DealDetailView'
+import CSVImportDialog from '@/components/CSVImportDialog'
 
 interface DealFilters {
   minValue: string
@@ -35,6 +37,7 @@ export default function PipelineView() {
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [stages] = useKV<PipelineStage[]>('pipeline-stages', defaultPipelineStages)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [selectedStage, setSelectedStage] = useState<string>('')
   const [draggedDeal, setDraggedDeal] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
@@ -222,6 +225,24 @@ export default function PipelineView() {
     setIsDialogOpen(true)
   }
 
+  const handleImportCSV = async (file: File) => {
+    const reader = new FileReader()
+    return new Promise<any>((resolve) => {
+      reader.onload = (e) => {
+        const csvContent = e.target?.result as string
+        const result = importDealsFromCSV(csvContent, safeDeals, safeContacts)
+        
+        if (result.imported > 0) {
+          setDeals((current) => [...(current || []), ...result.data])
+          toast.success(`${result.imported} ${t.import.imported.toLowerCase()}`)
+        }
+        
+        resolve(result)
+      }
+      reader.readAsText(file)
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -236,6 +257,13 @@ export default function PipelineView() {
         <div className="flex items-center gap-3 flex-wrap">
           <Button
             variant="outline"
+            onClick={() => setIsImportDialogOpen(true)}
+          >
+            <Upload size={20} weight="bold" />
+            {t.common.import}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => {
               exportDealsToCSV(filteredDeals, safeContacts)
               toast.success(t.common.exportSuccess)
@@ -243,7 +271,7 @@ export default function PipelineView() {
             disabled={filteredDeals.length === 0}
           >
             <Download size={20} weight="bold" />
-            {t.common.exportToCSV}
+            {t.common.export}
           </Button>
           <motion.div
             whileHover={{ scale: 1.02 }}
@@ -703,6 +731,15 @@ export default function PipelineView() {
         onUpdate={() => {
           // Refresh is automatic due to useKV reactivity
         }}
+      />
+
+      <CSVImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        type="deals"
+        onImport={handleImportCSV}
+        title={t.import.importDeals}
+        description={t.import.importDealsDesc}
       />
     </div>
   )

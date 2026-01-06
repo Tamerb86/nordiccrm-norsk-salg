@@ -157,6 +157,32 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - Translation coverage includes: navigation, forms, buttons, status labels, error messages, success notifications, email templates, API documentation
   - Language setting survives browser sessions, tab closures, and page refreshes
 
+### Data Import & Export
+- **Functionality**: Import contacts and deals from CSV files with full validation and error reporting; export all data to CSV for backup and portability
+- **Purpose**: Enable bulk data entry, migration from other systems, and GDPR-compliant data portability
+- **Trigger**: User clicks import/export buttons in contacts or pipeline views
+- **Progression**:
+  - Import: Click import → Download template (optional) → Drag-drop or browse CSV file → System validates and parses → Preview errors → Confirm import → Records created
+  - Export: Click export → CSV file downloads with all data
+- **Success criteria**:
+  - CSV import supports contacts with required fields (firstName, lastName) and optional fields (email, phone, company, status, tags, value, source, assignedTo, notes)
+  - CSV import supports deals with required fields (title, contactId, stage, value) and optional fields (probability, expectedCloseDate, description, assignedTo)
+  - Contact import validates email format and prevents duplicates by email
+  - Deal import validates contactId existence and can match by email if ID not provided
+  - Deal import validates contact relationships
+  - Status field validation ensures only valid values (lead, prospect, customer, lost)
+  - Clear error messages with row numbers for validation failures
+  - Import dialog shows success/error summary with counts
+  - Skipped rows displayed with reasons
+  - Template download provides example format with all fields
+  - Export preserves all data including tags (semicolon-separated) and relationships
+  - Deal export includes contact information (name, email, company) for reference
+  - Import dialog supports drag-and-drop and file browser
+  - File type validation (CSV only)
+  - Import progress indication
+  - Ability to import another file after completion without closing dialog
+  - Norwegian and English translations for all import/export UI
+
 ### API & External Integrations
 - **Functionality**: Complete API management system with API keys, webhooks, external service integrations, interactive API playground, authentication testing, and comprehensive documentation; supports SMTP, SMS, accounting systems, calendar, and custom integrations
 - **Purpose**: Enable seamless integration with external systems, automate workflows, extend CRM functionality through third-party services, provide developers with tools to test and validate API requests, and ensure proper permission enforcement through comprehensive authentication testing
@@ -232,8 +258,12 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 
 ## Edge Case Handling
 - **Empty States**: Helpful onboarding messages with action buttons when no contacts/deals exist
-- **Duplicate Contacts**: Warning when email/phone matches existing contact, offer to merge
-- **Data Export**: Full CSV/Excel export capability for GDPR compliance and portability
+- **Duplicate Contacts**: Warning when email/phone matches existing contact during manual entry and CSV import
+- **Data Export**: Full CSV export capability for GDPR compliance and portability
+- **Data Import**: CSV import with comprehensive validation, error reporting, and duplicate detection
+- **Invalid CSV Data**: Row-by-row validation with clear error messages indicating field and issue
+- **Missing Required Fields**: Import skips invalid rows and reports missing required fields
+- **Malformed CSV**: Parser handles quoted fields, commas in values, and various CSV formats
 - **Offline State**: Clear messaging when connection lost, queue actions for retry
 - **Invalid Data**: Inline validation with Norwegian error messages before submission
 - **Deleted Items**: Soft delete with 30-day recovery window before permanent removal
