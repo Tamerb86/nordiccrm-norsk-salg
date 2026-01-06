@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected, Globe } from '@phosphor-icons/react'
+import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected } from '@phosphor-icons/react'
 import { useLanguage } from '@/lib/language-context'
 import Dashboard from '@/components/Dashboard'
 import ContactsView from '@/components/ContactsView'
@@ -7,15 +7,14 @@ import PipelineView from '@/components/PipelineView'
 import TasksView from '@/components/TasksView'
 import EmailsView from '@/components/EmailsView'
 import ApiIntegrationsView from '@/components/ApiIntegrationsView'
-import LanguageTest from '@/components/LanguageTest'
 import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
 import Footer from '@/components/Footer'
 import { Toaster } from '@/components/ui/sonner'
 
-type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api' | 'language-test'
+type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api'
 
 function App() {
-  const { t, language } = useLanguage()
+  const { t } = useLanguage()
   const [currentView, setCurrentView] = useState<View>('dashboard')
 
   const navItems = [
@@ -25,7 +24,6 @@ function App() {
     { id: 'tasks' as View, label: t.nav.tasks, icon: ListChecks },
     { id: 'emails' as View, label: t.email.title, icon: EnvelopeSimple },
     { id: 'api' as View, label: t.api.title, icon: PlugsConnected },
-    { id: 'language-test' as View, label: language === 'no' ? '🌐 Språktest' : '🌐 Language Test', icon: Globe },
   ]
 
   return (
@@ -85,7 +83,6 @@ function App() {
         {currentView === 'tasks' && <TasksView />}
         {currentView === 'emails' && <EmailsView />}
         {currentView === 'api' && <ApiIntegrationsView />}
-        {currentView === 'language-test' && <LanguageTest />}
       </main>
 
       <Footer />
