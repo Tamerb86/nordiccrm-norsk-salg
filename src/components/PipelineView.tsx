@@ -1,6 +1,6 @@
 import { useState, DragEvent, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, Eye, EyeSlash, FunnelSimple, X, Download, Upload } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash, FunnelSimple, X, Download, Upload, CheckSquare, Square } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
 import { defaultPipelineStages } from '@/lib/norwegian'
@@ -18,9 +19,10 @@ import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
 import { exportDealsToCSV } from '@/lib/csv-export'
 import { importDealsFromCSV } from '@/lib/csv-import'
 import { cn } from '@/lib/utils'
-import type { Deal, Contact, PipelineStage } from '@/lib/types'
+import type { Deal, Contact, PipelineStage, Email } from '@/lib/types'
 import DealDetailView from '@/components/DealDetailView'
 import CSVImportDialog from '@/components/CSVImportDialog'
+import BulkActionsToolbar from '@/components/BulkActionsToolbar'
 
 interface DealFilters {
   minValue: string
@@ -35,6 +37,7 @@ export default function PipelineView() {
   const { t } = useLanguage()
   const [deals, setDeals] = useKV<Deal[]>('deals', [])
   const [contacts] = useKV<Contact[]>('contacts', [])
+  const [emails, setEmails] = useKV<Email[]>('emails', [])
   const [stages] = useKV<PipelineStage[]>('pipeline-stages', defaultPipelineStages)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
@@ -44,6 +47,7 @@ export default function PipelineView() {
   const [showClosedDeals, setShowClosedDeals] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
+  const [selectedDealIds, setSelectedDealIds] = useState<string[]>([])
   const [filters, setFilters] = useState<DealFilters>({
     minValue: '',
     maxValue: '',
@@ -55,6 +59,7 @@ export default function PipelineView() {
 
   const safeDeals = deals || []
   const safeContacts = contacts || []
+  const safeEmails = emails || []
   const safeStages = stages || defaultPipelineStages
 
   const activePipelineStages = safeStages.filter(s => s.id !== 'won' && s.id !== 'lost')
@@ -243,6 +248,78 @@ export default function PipelineView() {
     })
   }
 
+  const toggleSelectDeal = (dealId: string) => {
+    setSelectedDealIds((current) =>
+      current.includes(dealId)
+        ? current.filter((id) => id !== dealId)
+        : [...current, dealId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    const allVisibleDealIds = filteredOpenDeals.map((d) => d.id)
+    if (selectedDealIds.length === allVisibleDealIds.length) {
+      setSelectedDealIds([])
+    } else {
+      setSelectedDealIds(allVisibleDealIds)
+    }
+  }
+
+  const handleBulkEmail = (ids: string[], subject: string, body: string) => {
+    const dealsToEmail = safeDeals.filter((d) => ids.includes(d.id))
+    
+    dealsToEmail.forEach((deal) => {
+      const contact = safeContacts.find((c) => c.id === deal.contactId)
+      if (contact?.email) {
+        const newEmail: Email = {
+          id: generateId(),
+          contactId: contact.id,
+          dealId: deal.id,
+          from: 'crm@example.com',
+          to: contact.email,
+          subject,
+          body,
+          status: 'sent',
+          trackingEnabled: true,
+          openCount: 0,
+          clickCount: 0,
+          sentAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        setEmails((current) => [...(current || []), newEmail])
+      }
+    })
+
+    setSelectedDealIds([])
+  }
+
+  const handleBulkStatusUpdate = (ids: string[], newStage: string) => {
+    setDeals((current) =>
+      (current || []).map((d) =>
+        ids.includes(d.id)
+          ? {
+              ...d,
+              stage: newStage,
+              probability: safeStages.find((s) => s.id === newStage)?.probability || d.probability,
+              updatedAt: new Date().toISOString(),
+            }
+          : d
+      )
+    )
+    setSelectedDealIds([])
+  }
+
+  const handleBulkTagAssignment = (ids: string[], newTags: string[]) => {
+    toast.info('Tags er ikke tilgjengelig for avtaler ennå')
+    setSelectedDealIds([])
+  }
+
+  const handleBulkDelete = (ids: string[]) => {
+    setDeals((current) => (current || []).filter((d) => !ids.includes(d.id)))
+    setSelectedDealIds([])
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -252,9 +329,24 @@ export default function PipelineView() {
             {filteredOpenDeals.length} {t.deal.open.toLowerCase()}
             {filteredClosedDeals.length > 0 && ` • ${filteredClosedDeals.length} lukket`}
             {activeFilterCount > 0 && ` • ${activeFilterCount} filter aktiv`}
+            {selectedDealIds.length > 0 && ` • ${selectedDealIds.length} valgt`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {filteredOpenDeals.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={toggleSelectAll}
+              className="gap-2"
+            >
+              {selectedDealIds.length === filteredOpenDeals.length ? (
+                <CheckSquare size={20} weight="fill" />
+              ) : (
+                <Square size={20} />
+              )}
+              {selectedDealIds.length === filteredOpenDeals.length ? 'Fjern alle' : 'Velg alle'}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setIsImportDialogOpen(true)}
@@ -339,6 +431,18 @@ export default function PipelineView() {
           </Dialog>
         </div>
       </div>
+
+      <BulkActionsToolbar
+        type="deals"
+        selectedIds={selectedDealIds}
+        allItems={safeDeals}
+        onClearSelection={() => setSelectedDealIds([])}
+        onBulkEmail={handleBulkEmail}
+        onBulkStatusUpdate={handleBulkStatusUpdate}
+        onBulkTagAssignment={handleBulkTagAssignment}
+        onBulkDelete={handleBulkDelete}
+        stages={safeStages}
+      />
 
       <AnimatePresence>
         {showFilters && (
@@ -617,82 +721,99 @@ export default function PipelineView() {
 
               <div className="space-y-2 min-h-[100px]">
                 <AnimatePresence mode="popLayout">
-                  {stageDeals.map((deal) => (
-                    <motion.div
-                      key={deal.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.8, y: -20 }}
-                      animate={{ 
-                        opacity: draggedDeal === deal.id ? 0.5 : 1, 
-                        scale: 1, 
-                        y: 0 
-                      }}
-                      exit={{ opacity: 0, scale: 0.8, x: 100 }}
-                      transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 30,
-                        opacity: { duration: 0.2 }
-                      }}
-                    >
-                      <Card 
-                        className={cn(
-                          "hover:shadow-md transition-shadow cursor-pointer",
-                          !isClosedStage && "active:cursor-grabbing",
-                          draggedDeal === deal.id && "shadow-lg",
-                          isClosedStage && "opacity-80"
-                        )}
-                        draggable={!isClosedStage}
-                        onDragStart={(e) => !isClosedStage && handleDragStart(e, deal.id)}
-                        onDragEnd={handleDragEnd}
-                        onClick={(e) => {
-                          const target = e.currentTarget
-                          if (!target.hasAttribute('data-dragging')) {
-                            setSelectedDealId(deal.id)
-                          }
+                  {stageDeals.map((deal) => {
+                    const isSelected = selectedDealIds.includes(deal.id)
+                    return (
+                      <motion.div
+                        key={deal.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                        animate={{ 
+                          opacity: draggedDeal === deal.id ? 0.5 : 1, 
+                          scale: 1, 
+                          y: 0 
+                        }}
+                        exit={{ opacity: 0, scale: 0.8, x: 100 }}
+                        transition={{ 
+                          type: "spring", 
+                          stiffness: 300, 
+                          damping: 30,
+                          opacity: { duration: 0.2 }
                         }}
                       >
-                        <CardContent className="p-4 space-y-2">
-                          <h4 className="font-semibold text-sm">{deal.title}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {getContactName(deal.contactId)}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-sm font-semibold">
-                              {formatCurrency(deal.value)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {deal.probability}%
-                            </span>
-                          </div>
-                          {!isClosedStage && (
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <Select
-                                value={deal.stage}
-                                onValueChange={(value) => handleStageChange(deal.id, value)}
+                        <Card 
+                          className={cn(
+                            "hover:shadow-md transition-shadow cursor-pointer relative",
+                            !isClosedStage && "active:cursor-grabbing",
+                            draggedDeal === deal.id && "shadow-lg",
+                            isClosedStage && "opacity-80",
+                            isSelected && "ring-2 ring-primary shadow-lg"
+                          )}
+                          draggable={!isClosedStage}
+                          onDragStart={(e) => !isClosedStage && handleDragStart(e, deal.id)}
+                          onDragEnd={handleDragEnd}
+                          onClick={(e) => {
+                            const target = e.currentTarget
+                            if (!target.hasAttribute('data-dragging')) {
+                              setSelectedDealId(deal.id)
+                            }
+                          }}
+                        >
+                          <CardContent className="p-4 space-y-2">
+                            {!isClosedStage && (
+                              <div 
+                                className="absolute top-2 right-2 z-10"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                <SelectTrigger className="h-7 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {safeStages.map((s) => (
-                                    <SelectItem key={s.id} value={s.id}>
-                                      {s.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                          {isClosedStage && deal.actualCloseDate && (
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleSelectDeal(deal.id)}
+                                  className="h-4 w-4"
+                                />
+                              </div>
+                            )}
+                            
+                            <h4 className="font-semibold text-sm pr-6">{deal.title}</h4>
                             <p className="text-xs text-muted-foreground">
-                              Lukket: {new Date(deal.actualCloseDate).toLocaleDateString('nb-NO')}
+                              {getContactName(deal.contactId)}
                             </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-sm font-semibold">
+                                {formatCurrency(deal.value)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {deal.probability}%
+                              </span>
+                            </div>
+                            {!isClosedStage && (
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <Select
+                                  value={deal.stage}
+                                  onValueChange={(value) => handleStageChange(deal.id, value)}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {safeStages.map((s) => (
+                                      <SelectItem key={s.id} value={s.id}>
+                                        {s.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            {isClosedStage && deal.actualCloseDate && (
+                              <p className="text-xs text-muted-foreground">
+                                Lukket: {new Date(deal.actualCloseDate).toLocaleDateString('nb-NO')}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
                 </AnimatePresence>
                 
                 {!isClosedStage && (

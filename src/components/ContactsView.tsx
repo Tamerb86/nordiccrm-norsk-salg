@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, MagnifyingGlass, Pencil, Trash, Eye, Download, Upload } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Pencil, Trash, Eye, Download, Upload, CheckSquare, Square } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,26 +9,103 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
 import { exportContactsToCSV } from '@/lib/csv-export'
 import { importContactsFromCSV } from '@/lib/csv-import'
-import type { Contact, ContactStatus } from '@/lib/types'
+import type { Contact, ContactStatus, Email } from '@/lib/types'
 import ContactDetailView from '@/components/ContactDetailView'
 import CSVImportDialog from '@/components/CSVImportDialog'
+import BulkActionsToolbar from '@/components/BulkActionsToolbar'
 
 export default function ContactsView() {
   const { t } = useLanguage()
   const [contacts, setContacts] = useKV<Contact[]>('contacts', [])
+  const [emails, setEmails] = useKV<Email[]>('emails', [])
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [viewingContactId, setViewingContactId] = useState<string | null>(null)
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
 
   const safeContacts = contacts || []
+  const safeEmails = emails || []
   const filteredContacts = filterBySearch(safeContacts, searchTerm, ['firstName', 'lastName', 'email', 'company', 'tags'])
+
+  const toggleSelectContact = (contactId: string) => {
+    setSelectedContactIds((current) =>
+      current.includes(contactId)
+        ? current.filter((id) => id !== contactId)
+        : [...current, contactId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedContactIds.length === filteredContacts.length) {
+      setSelectedContactIds([])
+    } else {
+      setSelectedContactIds(filteredContacts.map((c) => c.id))
+    }
+  }
+
+  const handleBulkEmail = (ids: string[], subject: string, body: string) => {
+    const contactsToEmail = safeContacts.filter((c) => ids.includes(c.id) && c.email)
+    
+    contactsToEmail.forEach((contact) => {
+      const newEmail: Email = {
+        id: generateId(),
+        contactId: contact.id,
+        from: 'crm@example.com',
+        to: contact.email!,
+        subject,
+        body,
+        status: 'sent',
+        trackingEnabled: true,
+        openCount: 0,
+        clickCount: 0,
+        sentAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      setEmails((current) => [...(current || []), newEmail])
+    })
+
+    setSelectedContactIds([])
+  }
+
+  const handleBulkStatusUpdate = (ids: string[], status: ContactStatus | string) => {
+    setContacts((current) =>
+      (current || []).map((c) =>
+        ids.includes(c.id)
+          ? { ...c, status: status as ContactStatus, updatedAt: new Date().toISOString() }
+          : c
+      )
+    )
+    setSelectedContactIds([])
+  }
+
+  const handleBulkTagAssignment = (ids: string[], newTags: string[]) => {
+    setContacts((current) =>
+      (current || []).map((c) =>
+        ids.includes(c.id)
+          ? {
+              ...c,
+              tags: [...new Set([...c.tags, ...newTags])],
+              updatedAt: new Date().toISOString(),
+            }
+          : c
+      )
+    )
+    setSelectedContactIds([])
+  }
+
+  const handleBulkDelete = (ids: string[]) => {
+    setContacts((current) => (current || []).filter((c) => !ids.includes(c.id)))
+    setSelectedContactIds([])
+  }
 
   const handleSaveContact = (contact: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingContact) {
@@ -92,9 +169,26 @@ export default function ContactsView() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{t.contact.title}</h2>
-          <p className="text-muted-foreground mt-1">{t.contact.all}</p>
+          <p className="text-muted-foreground mt-1">
+            {t.contact.all}
+            {selectedContactIds.length > 0 && ` • ${selectedContactIds.length} valgt`}
+          </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {filteredContacts.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={toggleSelectAll}
+              className="gap-2"
+            >
+              {selectedContactIds.length === filteredContacts.length ? (
+                <CheckSquare size={20} weight="fill" />
+              ) : (
+                <Square size={20} />
+              )}
+              {selectedContactIds.length === filteredContacts.length ? 'Fjern alle' : 'Velg alle'}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setIsImportDialogOpen(true)}
@@ -138,6 +232,17 @@ export default function ContactsView() {
           </Dialog>
         </div>
       </div>
+
+      <BulkActionsToolbar
+        type="contacts"
+        selectedIds={selectedContactIds}
+        allItems={safeContacts}
+        onClearSelection={() => setSelectedContactIds([])}
+        onBulkEmail={handleBulkEmail}
+        onBulkStatusUpdate={handleBulkStatusUpdate}
+        onBulkTagAssignment={handleBulkTagAssignment}
+        onBulkDelete={handleBulkDelete}
+      />
 
       <CSVImportDialog
         open={isImportDialogOpen}
@@ -186,78 +291,94 @@ export default function ContactsView() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredContacts.map((contact) => (
-          <Card key={contact.id} className="hover:shadow-lg transition-all group">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-lg">
-                    {getInitials(contact.firstName, contact.lastName)}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg leading-tight">
-                      {getFullName(contact.firstName, contact.lastName)}
-                    </h3>
-                    {contact.company && (
-                      <p className="text-sm text-muted-foreground">{contact.company}</p>
-                    )}
+        {filteredContacts.map((contact) => {
+          const isSelected = selectedContactIds.includes(contact.id)
+          return (
+            <Card 
+              key={contact.id} 
+              className={`hover:shadow-lg transition-all group relative ${
+                isSelected ? 'ring-2 ring-primary shadow-lg' : ''
+              }`}
+            >
+              <CardContent className="p-5">
+                <div className="absolute top-3 right-3 z-10">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelectContact(contact.id)}
+                    className="h-5 w-5"
+                  />
+                </div>
+
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-lg">
+                      {getInitials(contact.firstName, contact.lastName)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg leading-tight">
+                        {getFullName(contact.firstName, contact.lastName)}
+                      </h3>
+                      {contact.company && (
+                        <p className="text-sm text-muted-foreground">{contact.company}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-2 mb-3">
-                {contact.email && (
-                  <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
-                )}
-                {contact.phone && (
-                  <p className="text-sm text-muted-foreground font-mono">{contact.phone}</p>
-                )}
-              </div>
+                <div className="space-y-2 mb-3">
+                  {contact.email && (
+                    <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
+                  )}
+                  {contact.phone && (
+                    <p className="text-sm text-muted-foreground font-mono">{contact.phone}</p>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <Badge className={getStatusColor(contact.status)}>
-                  {t.status[contact.status]}
-                </Badge>
-                {contact.tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
-                    {tag}
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <Badge className={getStatusColor(contact.status)}>
+                    {t.status[contact.status]}
                   </Badge>
-                ))}
-              </div>
+                  {contact.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
 
-              <div className="flex items-center gap-2 pt-3 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setViewingContactId(contact.id)}
-                  className="flex-1"
-                >
-                  <Eye size={16} />
-                  {t.common.view}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openEditDialog(contact)}
-                >
-                  <Pencil size={16} />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteContact(contact.id)}
-                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash size={16} />
-                </Button>
-              </div>
+                <div className="flex items-center gap-2 pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewingContactId(contact.id)}
+                    className="flex-1"
+                  >
+                    <Eye size={16} />
+                    {t.common.view}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(contact)}
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteContact(contact.id)}
+                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash size={16} />
+                  </Button>
+                </div>
 
-              <p className="text-xs text-muted-foreground mt-3">
-                {t.contact.createdAt}: {formatDate(contact.createdAt)}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+                <p className="text-xs text-muted-foreground mt-3">
+                  {t.contact.createdAt}: {formatDate(contact.createdAt)}
+                </p>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       <ContactDetailView
