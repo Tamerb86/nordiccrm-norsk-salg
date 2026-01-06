@@ -142,13 +142,15 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 - **Success criteria**: Accurate calculations, real-time data, NOK currency formatting, email engagement metrics
 
 ### API & External Integrations
-- **Functionality**: Complete API management system with API keys, webhooks, and external service integrations; supports SMTP, SMS, accounting systems, calendar, and custom integrations
-- **Purpose**: Enable seamless integration with external systems, automate workflows, and extend CRM functionality through third-party services
+- **Functionality**: Complete API management system with API keys, webhooks, external service integrations, interactive API playground, and comprehensive documentation; supports SMTP, SMS, accounting systems, calendar, and custom integrations
+- **Purpose**: Enable seamless integration with external systems, automate workflows, extend CRM functionality through third-party services, and provide developers with tools to test and validate API requests
 - **Trigger**: User navigates to API section from main navigation
 - **Progression**: 
   - API Keys: Create key → Set permissions (read/write/delete/admin) → Set expiry → Copy key → Use in external systems → Revoke when needed
   - Webhooks: Create webhook → Enter URL → Select events to listen to → Get secret key → Test webhook → View logs → Monitor failures
   - Integrations: Choose type (SMTP/SMS/Accounting/Calendar) → Select provider → Configure credentials → Test connection → Activate → Sync data
+  - API Playground: Select endpoint → Add API key → Configure parameters/body → Execute request → View response with status/time → Copy cURL command → Test different endpoints
+  - Documentation: Browse API docs → View endpoint details → Copy code examples → Understand authentication → Review error codes
 - **Success criteria**:
   - API keys generated with secure random strings (40 chars + prefix)
   - Keys can be revoked or deleted independently
@@ -164,6 +166,21 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
   - SMS integration with API key and sender ID configuration
   - Integration sync status tracking (success/failed with timestamps)
   - Active/inactive toggle for all integrations
+  - Interactive API playground with:
+    - 14+ pre-configured endpoints across contacts, deals, tasks, and emails
+    - Method selection (GET/POST/PUT/PATCH/DELETE) with color-coded badges
+    - API key input with password masking
+    - Dynamic path parameter input for :id routes
+    - Query parameter builder with inline documentation
+    - Request body editor for POST/PUT/PATCH with pre-filled examples
+    - Real-time response display with JSON formatting
+    - HTTP status code display with success/error indicators
+    - Response time tracking in milliseconds
+    - Copy-to-clipboard for responses
+    - Auto-generated cURL command for each request
+    - Two-panel layout: request configuration | response/cURL
+    - Category-based endpoint organization in dropdown
+    - Mock response simulation for testing without live API
   - Comprehensive API documentation in Norwegian
   - Rate limiting documentation (1000 req/hour)
   - Clear error codes and troubleshooting guide
