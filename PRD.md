@@ -59,6 +59,28 @@ This CRM system fulfills all essential CRM requirements including:
 - Comprehensive permission system (read/write/delete/admin)
 - Audit logging for all API activities
 - Secure data storage with backup capabilities
+- **Password Reset**: Self-service password reset via email verification token
+- **Email Verification**: Email verification system for new team members with resend capability
+- **Authentication Security**: Token-based authentication with expiration
+
+### Authentication & User Management
+- **Functionality**: Secure login system with password reset, email verification, and multi-factor authentication support; role-based access control with team member management
+- **Purpose**: Ensure secure access to CRM data while maintaining user convenience and account recovery options
+- **Trigger**: User navigates to login page, clicks "Forgot password?", or new team member receives invitation
+- **Progression**: 
+  - **Login**: Enter email/password → Validate credentials → Check email verification status → Access CRM
+  - **Password Reset**: Click "Forgot password?" → Enter email → Receive reset link (console in demo) → Click link → Enter new password → Confirm password → Reset successful → Return to login
+  - **Email Verification**: Receive invitation email → Click verification link → Email verified → Access granted → Verification banner removed
+  - **New Member Onboarding**: Admin invites member → System generates verification token → Member receives email → Verifies email → Sets password → Access granted
+- **Success criteria**:
+  - Password reset tokens expire after 1 hour
+  - Email verification tokens expire after 24 hours
+  - Unverified users see banner with resend option
+  - Admin can view verification status in team management
+  - Reset/verification links logged to console in demo mode
+  - Token validation prevents expired/invalid links
+  - Demo accounts: admin and manager verified, sales unverified (for testing)
+  - All authentication flows fully translatable (Norwegian/English)
 
 ### 9. قابلية التوسع والاعتماد (Scalability & Reliability) ✓
 - Fast performance + mobile-friendly responsive design

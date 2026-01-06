@@ -22,6 +22,7 @@ export function useDemoAccounts() {
             invitedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            emailVerified: true,
           },
           {
             id: 'demo-manager-001',
@@ -36,6 +37,7 @@ export function useDemoAccounts() {
             invitedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            emailVerified: true,
           },
           {
             id: 'demo-sales-001',
@@ -50,6 +52,7 @@ export function useDemoAccounts() {
             invitedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            emailVerified: false,
           },
         ]
         

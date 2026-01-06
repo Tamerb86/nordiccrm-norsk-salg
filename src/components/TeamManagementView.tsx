@@ -75,16 +75,26 @@ export default function TeamManagementView() {
         return
       }
 
+      const verificationToken = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
+      const verificationExpires = new Date(Date.now() + 86400000).toISOString()
+
       const newMember: TeamMember = {
         id: `member-${Date.now()}`,
         ...formData,
         isActive: true,
+        emailVerified: false,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
         invitedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
 
       setMembers((current) => [...(current || []), newMember])
+      
+      const verificationUrl = `${window.location.origin}?verify=${verificationToken}`
+      console.log('Email verification link for new member:', verificationUrl)
+      
       toast.success(t.team.memberCreated)
     }
 
@@ -254,6 +264,15 @@ export default function TeamManagementView() {
                   <span className="text-sm font-medium">
                     {member.isActive ? t.team.active : t.team.inactive}
                   </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{t.auth.emailVerified}</span>
+                  {member.emailVerified ? (
+                    <CheckCircle size={16} className="text-accent" weight="fill" />
+                  ) : (
+                    <XCircle size={16} className="text-muted-foreground" weight="fill" />
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">

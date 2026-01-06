@@ -8,7 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onForgotPassword: () => void
+}
+
+export default function LoginForm({ onForgotPassword }: LoginFormProps) {
   const { t } = useLanguage()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
@@ -87,6 +91,16 @@ export default function LoginForm() {
                   {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-end mb-4">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-primary hover:underline"
+              >
+                {t.auth?.forgotPassword || 'Forgot password?'}
+              </button>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

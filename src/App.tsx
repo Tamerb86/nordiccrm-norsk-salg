@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected, UserCircleGear } from '@phosphor-icons/react'
 import { useLanguage } from '@/lib/language-context'
 import { useAuth } from '@/lib/auth-context'
@@ -12,16 +12,40 @@ import ApiIntegrationsView from '@/components/ApiIntegrationsView'
 import TeamManagementView from '@/components/TeamManagementView'
 import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
 import LoginForm from '@/components/LoginForm'
+import ForgotPasswordForm from '@/components/ForgotPasswordForm'
+import ResetPasswordForm from '@/components/ResetPasswordForm'
+import EmailVerification from '@/components/EmailVerification'
+import EmailVerificationBanner from '@/components/EmailVerificationBanner'
 import UserMenu from '@/components/UserMenu'
 import Footer from '@/components/Footer'
 import { Toaster } from '@/components/ui/sonner'
 
 type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api' | 'team'
+type AuthView = 'login' | 'forgot-password' | 'reset-password' | 'verify-email'
 
 function App() {
   const { t } = useLanguage()
   const { isAuthenticated, isLoading, user } = useAuth()
   const [currentView, setCurrentView] = useState<View>('dashboard')
+  const [authView, setAuthView] = useState<AuthView>('login')
+  const [resetToken, setResetToken] = useState<string | null>(null)
+  const [verifyToken, setVerifyToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const reset = params.get('reset')
+    const verify = params.get('verify')
+
+    if (reset) {
+      setResetToken(reset)
+      setAuthView('reset-password')
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (verify) {
+      setVerifyToken(verify)
+      setAuthView('verify-email')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   if (isLoading) {
     return (
@@ -35,7 +59,39 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginForm />
+    if (authView === 'forgot-password') {
+      return <ForgotPasswordForm onBack={() => setAuthView('login')} />
+    }
+
+    if (authView === 'reset-password' && resetToken) {
+      return (
+        <ResetPasswordForm
+          token={resetToken}
+          onSuccess={() => {
+            setAuthView('login')
+            setResetToken(null)
+          }}
+          onBack={() => {
+            setAuthView('login')
+            setResetToken(null)
+          }}
+        />
+      )
+    }
+
+    if (authView === 'verify-email' && verifyToken) {
+      return (
+        <EmailVerification
+          token={verifyToken}
+          onSuccess={() => {
+            setAuthView('login')
+            setVerifyToken(null)
+          }}
+        />
+      )
+    }
+
+    return <LoginForm onForgotPassword={() => setAuthView('forgot-password')} />
   }
 
   const allNavItems = [
@@ -107,6 +163,8 @@ function App() {
       </header>
 
       <main className="container mx-auto px-4 py-6 flex-1">
+        {user && <EmailVerificationBanner userId={user.id} />}
+        
         {currentView === 'dashboard' && <Dashboard />}
         {currentView === 'contacts' && <ContactsView />}
         {currentView === 'pipeline' && <PipelineView />}

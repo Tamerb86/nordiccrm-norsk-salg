@@ -254,6 +254,11 @@ export interface TeamMember {
   lastActiveAt?: string
   createdAt: string
   updatedAt: string
+  emailVerified?: boolean
+  emailVerificationToken?: string
+  emailVerificationExpires?: string
+  passwordResetToken?: string
+  passwordResetExpires?: string
 }
 
 export interface RolePermissions {
