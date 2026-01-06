@@ -1,6 +1,6 @@
 import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { norwegianTranslations as t } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import { formatCurrency, formatNumber, calculateConversionRate } from '@/lib/helpers'
 import type { Contact, Deal, Task, Activity, Email } from '@/lib/types'
 import { Users, CurrencyCircleDollar, Target, CheckCircle, Phone, EnvelopeSimple, CalendarDots, EnvelopeOpen, CursorClick } from '@phosphor-icons/react'
@@ -8,6 +8,7 @@ import ActivityTimeline from '@/components/ActivityTimeline'
 import IntegrationStatusWidget from '@/components/IntegrationStatusWidget'
 
 export default function Dashboard() {
+  const { t } = useLanguage()
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [deals] = useKV<Deal[]>('deals', [])
   const [tasks] = useKV<Task[]>('tasks', [])
@@ -100,7 +101,7 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Samtaler denne uken
+              {t.dashboard.callsThisWeek}
             </CardTitle>
             <Phone size={20} className="text-blue-600" weight="duotone" />
           </CardHeader>
@@ -112,7 +113,7 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              E-poster denne uken
+              {t.dashboard.emailsThisWeek}
             </CardTitle>
             <EnvelopeSimple size={20} className="text-purple-600" weight="duotone" />
           </CardHeader>
@@ -124,7 +125,7 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Møter denne uken
+              {t.dashboard.meetingsThisWeek}
             </CardTitle>
             <CalendarDots size={20} className="text-green-600" weight="duotone" />
           </CardHeader>
@@ -138,7 +139,7 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              E-poster sendt
+              {t.dashboard.emailsSent}
             </CardTitle>
             <EnvelopeSimple size={20} className="text-blue-600" weight="duotone" />
           </CardHeader>
@@ -150,14 +151,14 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Åpningsrate
+              {t.dashboard.openRate}
             </CardTitle>
             <EnvelopeOpen size={20} className="text-purple-600" weight="duotone" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{emailOpenRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {openedEmails.length} av {sentEmails.length} åpnet
+              {openedEmails.length} {t.dashboard.of} {sentEmails.length} {t.dashboard.opened}
             </p>
           </CardContent>
         </Card>
@@ -165,14 +166,14 @@ export default function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Klikkrate
+              {t.dashboard.clickRate}
             </CardTitle>
             <CursorClick size={20} className="text-accent" weight="duotone" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{emailClickRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {clickedEmails.length} av {sentEmails.length} klikket
+              {clickedEmails.length} {t.dashboard.of} {sentEmails.length} {t.dashboard.clicked}
             </p>
           </CardContent>
         </Card>
@@ -181,7 +182,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Ytterligere statistikk</CardTitle>
+            <CardTitle>{t.dashboard.additionalStats}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
@@ -193,7 +194,7 @@ export default function Dashboard() {
               <span className="font-semibold font-mono">{conversionRate}%</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Ventende oppgaver</span>
+              <span className="text-muted-foreground">{t.dashboard.pendingTasks}</span>
               <span className="font-semibold font-mono">{formatNumber(pendingTasks.length)}</span>
             </div>
           </CardContent>
@@ -201,7 +202,7 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Kontaktstatus</CardTitle>
+            <CardTitle>{t.dashboard.contactStatus}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {['lead', 'prospect', 'customer', 'lost'].map(status => {
@@ -210,7 +211,7 @@ export default function Dashboard() {
               return (
                 <div key={status} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="capitalize">{status}</span>
+                    <span className="capitalize">{t.status[status as keyof typeof t.status]}</span>
                     <span className="font-mono">{count} ({percentage}%)</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
@@ -236,9 +237,9 @@ export default function Dashboard() {
         <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-dashed">
           <CardContent className="py-12 text-center">
             <Users size={48} className="mx-auto text-muted-foreground mb-4" weight="duotone" />
-            <h3 className="text-lg font-semibold mb-2">Velkommen til Norwegian CRM!</h3>
+            <h3 className="text-lg font-semibold mb-2">{t.dashboard.welcomeTitle}</h3>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Begynn med å legge til dine første kontakter og avtaler. Gå til "Kontakter" for å starte.
+              {t.dashboard.welcomeMessage}
             </p>
           </CardContent>
         </Card>

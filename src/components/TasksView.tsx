@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { norwegianTranslations as t, taskTypeLabels, priorityLabels } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import { generateId, getFullName, formatDate, isOverdue, isDueToday, getPriorityColor } from '@/lib/helpers'
 import type { Task, Contact, TaskType, TaskPriority } from '@/lib/types'
 
 export default function TasksView() {
+  const { t } = useLanguage()
   const [tasks, setTasks] = useKV<Task[]>('tasks', [])
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -37,30 +38,30 @@ export default function TasksView() {
       updatedAt: new Date().toISOString(),
     }
     setTasks((current) => [...(current || []), newTask])
-    toast.success('Oppgave opprettet')
+    toast.success(t.task.created)
     setIsDialogOpen(false)
   }
 
   const toggleTaskComplete = (taskId: string) => {
     setTasks((current) =>
-      (current || []).map((t) =>
-        t.id === taskId
+      (current || []).map((task) =>
+        task.id === taskId
           ? {
-              ...t,
-              completed: !t.completed,
-              completedAt: !t.completed ? new Date().toISOString() : undefined,
+              ...task,
+              completed: !task.completed,
+              completedAt: !task.completed ? new Date().toISOString() : undefined,
               updatedAt: new Date().toISOString(),
             }
-          : t
+          : task
       )
     )
-    const task = safeTasks.find(t => t.id === taskId)
-    toast.success(task?.completed ? 'Oppgave markert som ufullført' : 'Oppgave fullført!')
+    const task = safeTasks.find(task => task.id === taskId)
+    toast.success(task?.completed ? t.task.markedIncomplete : t.task.markedComplete)
   }
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks((current) => (current || []).filter((t) => t.id !== taskId))
-    toast.success('Oppgave slettet')
+    setTasks((current) => (current || []).filter((task) => task.id !== taskId))
+    toast.success(t.task.deleted)
   }
 
   const getContactName = (contactId: string | undefined): string => {
@@ -74,7 +75,7 @@ export default function TasksView() {
       {taskList.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            Ingen oppgaver
+            {t.task.noTasks}
           </CardContent>
         </Card>
       )}
@@ -136,17 +137,17 @@ export default function TasksView() {
 
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <Badge variant="outline" className="text-xs">
-                      {taskTypeLabels[task.type]}
+                      {t.taskType[task.type]}
                     </Badge>
                     <Badge className={getPriorityColor(task.priority)}>
-                      {priorityLabels[task.priority]}
+                      {t.priority[task.priority]}
                     </Badge>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock size={14} />
                       <span className={isTaskOverdue ? 'text-destructive font-semibold' : ''}>
                         {formatDate(task.dueDate)}
-                        {isTaskOverdue && ' (Forfalt)'}
-                        {isTaskToday && ' (I dag)'}
+                        {isTaskOverdue && ` (${t.task.overdue})`}
+                        {isTaskToday && ` (${t.task.today})`}
                       </span>
                     </div>
                   </div>
@@ -251,6 +252,7 @@ interface TaskFormProps {
 }
 
 function TaskForm({ contacts, onSave, onCancel }: TaskFormProps) {
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -268,7 +270,7 @@ function TaskForm({ contacts, onSave, onCancel }: TaskFormProps) {
       ...formData,
       contactId: formData.contactId || undefined,
       dealId: formData.dealId || undefined,
-      assignedTo: formData.assignedTo || undefined,
+      assignedTo: formData.dealId || undefined,
     })
   }
 
@@ -295,13 +297,13 @@ function TaskForm({ contacts, onSave, onCancel }: TaskFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="contactId">Kontakt</Label>
+        <Label htmlFor="contactId">{t.deal.contact}</Label>
         <Select value={formData.contactId} onValueChange={(value) => setFormData({ ...formData, contactId: value })}>
           <SelectTrigger id="contactId">
-            <SelectValue placeholder="Velg kontakt (valgfritt)" />
+            <SelectValue placeholder={t.contact.selectContact} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Ingen kontakt</SelectItem>
+            <SelectItem value="">{t.contact.noContact}</SelectItem>
             {contacts.map((contact) => (
               <SelectItem key={contact.id} value={contact.id}>
                 {getFullName(contact.firstName, contact.lastName)}
@@ -319,9 +321,9 @@ function TaskForm({ contacts, onSave, onCancel }: TaskFormProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(taskTypeLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
+              {(['call', 'email', 'meeting', 'follow-up', 'other'] as const).map((type) => (
+                <SelectItem key={type} value={type}>
+                  {t.taskType[type]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -335,9 +337,9 @@ function TaskForm({ contacts, onSave, onCancel }: TaskFormProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(priorityLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
+              {(['low', 'medium', 'high'] as const).map((priority) => (
+                <SelectItem key={priority} value={priority}>
+                  {t.priority[priority]}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -10,12 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { norwegianTranslations as t, statusLabels } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
 import type { Contact, ContactStatus } from '@/lib/types'
 import ContactDetailView from '@/components/ContactDetailView'
 
 export default function ContactsView() {
+  const { t } = useLanguage()
   const [contacts, setContacts] = useKV<Contact[]>('contacts', [])
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -34,7 +35,7 @@ export default function ContactsView() {
             : c
         )
       )
-      toast.success('Kontakt oppdatert')
+      toast.success(t.contact.updated)
     } else {
       const newContact: Contact = {
         ...contact,
@@ -43,7 +44,7 @@ export default function ContactsView() {
         updatedAt: new Date().toISOString(),
       }
       setContacts((current) => [...(current || []), newContact])
-      toast.success('Kontakt opprettet')
+      toast.success(t.contact.created)
     }
     setIsDialogOpen(false)
     setEditingContact(null)
@@ -51,7 +52,7 @@ export default function ContactsView() {
 
   const handleDeleteContact = (id: string) => {
     setContacts((current) => (current || []).filter((c) => c.id !== id))
-    toast.success('Kontakt slettet')
+    toast.success(t.contact.deleted)
   }
 
   const openEditDialog = (contact: Contact) => {
@@ -113,9 +114,9 @@ export default function ContactsView() {
         <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-dashed">
           <CardContent className="py-12 text-center">
             <Plus size={48} className="mx-auto text-muted-foreground mb-4" weight="duotone" />
-            <h3 className="text-lg font-semibold mb-2">Ingen kontakter enda</h3>
+            <h3 className="text-lg font-semibold mb-2">{t.contact.noContacts}</h3>
             <p className="text-muted-foreground mb-4">
-              Begynn med å legge til din første kontakt
+              {t.contact.addFirstContact}
             </p>
             <Button onClick={openNewDialog}>
               <Plus size={20} weight="bold" />
@@ -164,7 +165,7 @@ export default function ContactsView() {
 
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <Badge className={getStatusColor(contact.status)}>
-                  {statusLabels[contact.status]}
+                  {t.status[contact.status]}
                 </Badge>
                 {contact.tags.map((tag) => (
                   <Badge key={tag} variant="outline" className="text-xs">
@@ -181,7 +182,7 @@ export default function ContactsView() {
                   className="flex-1"
                 >
                   <Eye size={16} />
-                  Vis
+                  {t.common.view}
                 </Button>
                 <Button
                   variant="outline"
@@ -201,7 +202,7 @@ export default function ContactsView() {
               </div>
 
               <p className="text-xs text-muted-foreground mt-3">
-                Opprettet: {formatDate(contact.createdAt)}
+                {t.contact.createdAt}: {formatDate(contact.createdAt)}
               </p>
             </CardContent>
           </Card>
@@ -224,6 +225,7 @@ interface ContactFormProps {
 }
 
 function ContactForm({ contact, onSave, onCancel }: ContactFormProps) {
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     firstName: contact?.firstName || '',
     lastName: contact?.lastName || '',
@@ -314,9 +316,9 @@ function ContactForm({ contact, onSave, onCancel }: ContactFormProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
+            {(['lead', 'prospect', 'customer', 'lost'] as const).map((status) => (
+              <SelectItem key={status} value={status}>
+                {t.status[status]}
               </SelectItem>
             ))}
           </SelectContent>

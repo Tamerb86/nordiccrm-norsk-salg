@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { norwegianTranslations as t } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import { formatDateTime, formatRecurrencePattern } from '@/lib/helpers'
 import type { Email } from '@/lib/types'
 import EmailComposer from '@/components/EmailComposer'
@@ -15,6 +15,7 @@ import EmailTemplatesManager from '@/components/EmailTemplatesManager'
 import CustomTemplateVariablesManager from '@/components/CustomTemplateVariablesManager'
 
 export default function EmailsView() {
+  const { t } = useLanguage()
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [emails] = useKV<Email[]>('emails', [])
 
@@ -37,7 +38,7 @@ export default function EmailsView() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t.email.title}</h1>
           <p className="text-muted-foreground mt-1">
-            Send og spor e-poster til dine kunder
+            {t.email.sendAndTrackMessage}
           </p>
         </div>
         <Button onClick={() => setIsComposerOpen(true)} size="lg" className="gap-2">

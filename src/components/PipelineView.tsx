@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { norwegianTranslations as t, defaultPipelineStages } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
+import { defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
 import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
@@ -28,6 +29,7 @@ interface DealFilters {
 }
 
 export default function PipelineView() {
+  const { t } = useLanguage()
   const [deals, setDeals] = useKV<Deal[]>('deals', [])
   const [contacts] = useKV<Contact[]>('contacts', [])
   const [stages] = useKV<PipelineStage[]>('pipeline-stages', defaultPipelineStages)
@@ -59,7 +61,7 @@ export default function PipelineView() {
 
   const getContactName = (contactId: string): string => {
     const contact = safeContacts.find(c => c.id === contactId)
-    return contact ? getFullName(contact.firstName, contact.lastName) : 'Ukjent kontakt'
+    return contact ? getFullName(contact.firstName, contact.lastName) : t.contact.unknown
   }
   
   const filteredDeals = useMemo(() => {
@@ -703,6 +705,7 @@ interface DealFormProps {
 }
 
 function DealForm({ contacts, stages, initialStage, onSave, onCancel }: DealFormProps) {
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     title: '',
     contactId: '',
@@ -719,7 +722,7 @@ function DealForm({ contacts, stages, initialStage, onSave, onCancel }: DealForm
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.contactId) {
-      toast.error('Velg en kontakt')
+      toast.error(t.deal.selectContactError)
       return
     }
     onSave(formData)
@@ -747,10 +750,10 @@ function DealForm({ contacts, stages, initialStage, onSave, onCancel }: DealForm
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="contactId">Kontakt *</Label>
+        <Label htmlFor="contactId">{t.deal.contact} *</Label>
         <Select value={formData.contactId} onValueChange={(value) => setFormData({ ...formData, contactId: value })}>
           <SelectTrigger id="contactId">
-            <SelectValue placeholder="Velg kontakt" />
+            <SelectValue placeholder={t.deal.selectContact} />
           </SelectTrigger>
           <SelectContent>
             {contacts.map((contact) => (

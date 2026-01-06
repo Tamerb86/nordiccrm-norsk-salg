@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Key, Lightning, PlugsConnected, Book, Terminal, ShieldCheck } from '@phosphor-icons/react'
-import { norwegianTranslations as t } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ApiKeysManager from '@/components/ApiKeysManager'
 import WebhooksManager from '@/components/WebhooksManager'
@@ -10,6 +10,7 @@ import ApiPlayground from '@/components/ApiPlayground'
 import ApiAuthTester from '@/components/ApiAuthTester'
 
 export default function ApiIntegrationsView() {
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState('api-keys')
 
   return (
@@ -18,7 +19,7 @@ export default function ApiIntegrationsView() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">{t.api.title}</h1>
           <p className="text-muted-foreground mt-2">
-            Administrer API-nøkler, webhooks og eksterne integrasjoner
+            {t.api.manageMessage}
           </p>
         </div>
       </div>
