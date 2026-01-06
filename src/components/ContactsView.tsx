@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
+import { useAuth } from '@/lib/auth-context'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
 import { exportContactsToCSV } from '@/lib/csv-export'
 import { importContactsFromCSV } from '@/lib/csv-import'
@@ -19,9 +20,11 @@ import type { Contact, ContactStatus, Email } from '@/lib/types'
 import ContactDetailView from '@/components/ContactDetailView'
 import CSVImportDialog from '@/components/CSVImportDialog'
 import BulkActionsToolbar from '@/components/BulkActionsToolbar'
+import PermissionGuard from '@/components/PermissionGuard'
 
 export default function ContactsView() {
   const { t } = useLanguage()
+  const { hasPermission, user } = useAuth()
   const [contacts, setContacts] = useKV<Contact[]>('contacts', [])
   const [emails, setEmails] = useKV<Email[]>('emails', [])
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,7 +36,12 @@ export default function ContactsView() {
 
   const safeContacts = contacts || []
   const safeEmails = emails || []
-  const filteredContacts = filterBySearch(safeContacts, searchTerm, ['firstName', 'lastName', 'email', 'company', 'tags'])
+  
+  const userFilteredContacts = hasPermission('contacts', 'viewAll')
+    ? safeContacts
+    : safeContacts.filter(c => c.assignedTo === user?.id)
+  
+  const filteredContacts = filterBySearch(userFilteredContacts, searchTerm, ['firstName', 'lastName', 'email', 'company', 'tags'])
 
   const toggleSelectContact = (contactId: string) => {
     setSelectedContactIds((current) =>
@@ -189,47 +197,53 @@ export default function ContactsView() {
               {selectedContactIds.length === filteredContacts.length ? 'Fjern alle' : 'Velg alle'}
             </Button>
           )}
-          <Button
-            variant="outline"
-            onClick={() => setIsImportDialogOpen(true)}
-          >
-            <Upload size={20} weight="bold" />
-            {t.common.import}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              exportContactsToCSV(safeContacts)
-              toast.success(t.common.exportSuccess)
-            }}
-            disabled={safeContacts.length === 0}
-          >
-            <Download size={20} weight="bold" />
-            {t.common.export}
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog} size="lg">
-                <Plus size={20} weight="bold" />
-                {t.contact.addNew}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingContact ? t.contact.edit : t.contact.addNew}
-                </DialogTitle>
-              </DialogHeader>
-              <ContactForm
-                contact={editingContact}
-                onSave={handleSaveContact}
-                onCancel={() => {
-                  setIsDialogOpen(false)
-                  setEditingContact(null)
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          {hasPermission('contacts', 'importData') && (
+            <Button
+              variant="outline"
+              onClick={() => setIsImportDialogOpen(true)}
+            >
+              <Upload size={20} weight="bold" />
+              {t.common.import}
+            </Button>
+          )}
+          {hasPermission('contacts', 'exportData') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                exportContactsToCSV(safeContacts)
+                toast.success(t.common.exportSuccess)
+              }}
+              disabled={safeContacts.length === 0}
+            >
+              <Download size={20} weight="bold" />
+              {t.common.export}
+            </Button>
+          )}
+          {hasPermission('contacts', 'create') && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog} size="lg">
+                  <Plus size={20} weight="bold" />
+                  {t.contact.addNew}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingContact ? t.contact.edit : t.contact.addNew}
+                  </DialogTitle>
+                </DialogHeader>
+                <ContactForm
+                  contact={editingContact}
+                  onSave={handleSaveContact}
+                  onCancel={() => {
+                    setIsDialogOpen(false)
+                    setEditingContact(null)
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -355,21 +369,25 @@ export default function ContactsView() {
                     <Eye size={16} />
                     {t.common.view}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditDialog(contact)}
-                  >
-                    <Pencil size={16} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteContact(contact.id)}
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <Trash size={16} />
-                  </Button>
+                  {hasPermission('contacts', 'edit') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(contact)}
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                  )}
+                  {hasPermission('contacts', 'delete') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteContact(contact.id)}
+                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash size={16} />
+                    </Button>
+                  )}
                 </div>
 
                 <p className="text-xs text-muted-foreground mt-3">

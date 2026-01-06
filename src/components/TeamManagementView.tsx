@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Plus, MagnifyingGlass, Shield, UserCircle, Trash, PencilSimple, CheckCircle, XCircle } from '@phosphor-icons/react'
 import { useLanguage } from '@/lib/language-context'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,9 +15,11 @@ import { toast } from 'sonner'
 import { rolePermissions } from '@/lib/role-permissions'
 import type { TeamMember, UserRole } from '@/lib/types'
 import RolePermissionsView from './RolePermissionsView'
+import PermissionGuard from './PermissionGuard'
 
 export default function TeamManagementView() {
   const { t } = useLanguage()
+  const { hasPermission } = useAuth()
   const [members, setMembers] = useKV<TeamMember[]>('team-members', [])
   const [searchQuery, setSearchQuery] = useState('')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -162,10 +165,12 @@ export default function TeamManagementView() {
           <p className="text-muted-foreground">{t.team.manageTeam}</p>
         </div>
 
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2" />
-          {t.team.addMember}
-        </Button>
+        {hasPermission('team', 'invite') && (
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="mr-2" />
+            {t.team.addMember}
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -261,27 +266,33 @@ export default function TeamManagementView() {
                     <Shield size={16} className="mr-1" />
                     {t.team.permissions}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>
-                    <PencilSimple size={16} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleActive(member)}
-                  >
-                    {member.isActive ? (
-                      <XCircle size={16} />
-                    ) : (
-                      <CheckCircle size={16} />
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemove(member.id)}
-                  >
-                    <Trash size={16} />
-                  </Button>
+                  {hasPermission('team', 'edit') && (
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>
+                      <PencilSimple size={16} />
+                    </Button>
+                  )}
+                  {hasPermission('team', 'edit') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleActive(member)}
+                    >
+                      {member.isActive ? (
+                        <XCircle size={16} />
+                      ) : (
+                        <CheckCircle size={16} />
+                      )}
+                    </Button>
+                  )}
+                  {hasPermission('team', 'remove') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemove(member.id)}
+                    >
+                      <Trash size={16} />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -337,7 +348,11 @@ export default function TeamManagementView() {
 
               <div className="space-y-2">
                 <Label htmlFor="role">{t.team.role}</Label>
-                <Select value={formData.role} onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
+                  disabled={!hasPermission('team', 'changeRoles')}
+                >
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>

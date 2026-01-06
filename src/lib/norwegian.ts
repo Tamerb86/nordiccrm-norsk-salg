@@ -438,6 +438,22 @@ export const norwegianTranslations = {
     api: 'API',
     team: 'Team',
   },
+  auth: {
+    login: 'Logg inn',
+    logout: 'Logg ut',
+    email: 'E-post',
+    password: 'Passord',
+    loginDescription: 'Skriv inn påloggingsinformasjonen din for å få tilgang til CRM',
+    fillAllFields: 'Vennligst fyll ut alle feltene',
+    loginSuccess: 'Innlogging vellykket',
+    invalidCredentials: 'Ugyldig e-post eller passord',
+    loginError: 'En feil oppstod under innlogging',
+    loggingIn: 'Logger inn...',
+    demoAccounts: 'Demo-kontoer:',
+    anyPassword: 'Passord: hvilken som helst verdi',
+    accessDenied: 'Tilgang nektet',
+    noPermission: 'Du har ikke tillatelse til å få tilgang til denne funksjonen.',
+  },
 }
 
 export const statusLabels: Record<ContactStatus, string> = {

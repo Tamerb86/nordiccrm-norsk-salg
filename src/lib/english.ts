@@ -438,6 +438,22 @@ export const englishTranslations = {
     api: 'API',
     team: 'Team',
   },
+  auth: {
+    login: 'Login',
+    logout: 'Logout',
+    email: 'Email',
+    password: 'Password',
+    loginDescription: 'Enter your credentials to access the CRM',
+    fillAllFields: 'Please fill in all fields',
+    loginSuccess: 'Login successful',
+    invalidCredentials: 'Invalid email or password',
+    loginError: 'An error occurred during login',
+    loggingIn: 'Logging in...',
+    demoAccounts: 'Demo Accounts:',
+    anyPassword: 'Password: any value',
+    accessDenied: 'Access Denied',
+    noPermission: 'You do not have permission to access this feature.',
+  },
 }
 
 export const statusLabels: Record<ContactStatus, string> = {
