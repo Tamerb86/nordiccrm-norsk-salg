@@ -8,6 +8,7 @@ import TasksView from '@/components/TasksView'
 import EmailsView from '@/components/EmailsView'
 import ApiIntegrationsView from '@/components/ApiIntegrationsView'
 import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
+import Footer from '@/components/Footer'
 import { Toaster } from '@/components/ui/sonner'
 
 type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api'
@@ -25,7 +26,7 @@ function App() {
   ]
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <div className="min-h-screen bg-secondary flex flex-col">
       <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-md">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
@@ -74,7 +75,7 @@ function App() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-6 flex-1">
         {currentView === 'dashboard' && <Dashboard />}
         {currentView === 'contacts' && <ContactsView />}
         {currentView === 'pipeline' && <PipelineView />}
@@ -82,6 +83,8 @@ function App() {
         {currentView === 'emails' && <EmailsView />}
         {currentView === 'api' && <ApiIntegrationsView />}
       </main>
+
+      <Footer />
 
       <Toaster position="top-right" />
       <ScheduledEmailsManager />
