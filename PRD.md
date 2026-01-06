@@ -141,6 +141,22 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 - **Progression**: View dashboard → See key metrics → Filter by date/user → Export data → Analyze trends
 - **Success criteria**: Accurate calculations, real-time data, NOK currency formatting, email engagement metrics
 
+### Language & Localization
+- **Functionality**: Full bilingual support (Norwegian/English) with persistent language preference stored across browser sessions
+- **Purpose**: Serve both Norwegian users and English-speaking customers; remember user preference for better UX
+- **Trigger**: User clicks language switcher in footer or first loads application
+- **Progression**: Click language dropdown → Select Norwegian or English → UI updates instantly → Language preference saved → Return later → Language preference remembered
+- **Success criteria**:
+  - Complete translation coverage for Norwegian (Bokmål) and English
+  - Language preference persists using useKV storage (key: 'app-language')
+  - Instant UI updates when language changes (no page reload)
+  - Language switcher visible in footer with flag indicators (🇳🇴/🇬🇧)
+  - Current language indicated with checkmark in dropdown
+  - All components use language context for translations
+  - Default language is Norwegian ('no')
+  - Translation coverage includes: navigation, forms, buttons, status labels, error messages, success notifications, email templates, API documentation
+  - Language setting survives browser sessions, tab closures, and page refreshes
+
 ### API & External Integrations
 - **Functionality**: Complete API management system with API keys, webhooks, external service integrations, interactive API playground, authentication testing, and comprehensive documentation; supports SMTP, SMS, accounting systems, calendar, and custom integrations
 - **Purpose**: Enable seamless integration with external systems, automate workflows, extend CRM functionality through third-party services, provide developers with tools to test and validate API requests, and ensure proper permission enforcement through comprehensive authentication testing
