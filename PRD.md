@@ -142,13 +142,14 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
 - **Success criteria**: Accurate calculations, real-time data, NOK currency formatting, email engagement metrics
 
 ### API & External Integrations
-- **Functionality**: Complete API management system with API keys, webhooks, external service integrations, interactive API playground, and comprehensive documentation; supports SMTP, SMS, accounting systems, calendar, and custom integrations
-- **Purpose**: Enable seamless integration with external systems, automate workflows, extend CRM functionality through third-party services, and provide developers with tools to test and validate API requests
+- **Functionality**: Complete API management system with API keys, webhooks, external service integrations, interactive API playground, authentication testing, and comprehensive documentation; supports SMTP, SMS, accounting systems, calendar, and custom integrations
+- **Purpose**: Enable seamless integration with external systems, automate workflows, extend CRM functionality through third-party services, provide developers with tools to test and validate API requests, and ensure proper permission enforcement through comprehensive authentication testing
 - **Trigger**: User navigates to API section from main navigation
 - **Progression**: 
   - API Keys: Create key → Set permissions (read/write/delete/admin) → Set expiry → Copy key → Use in external systems → Revoke when needed
   - Webhooks: Create webhook → Enter URL → Select events to listen to → Get secret key → Test webhook → View logs → Monitor failures
   - Integrations: Choose type (SMTP/SMS/Accounting/Calendar) → Select provider → Configure credentials → Test connection → Activate → Sync data
+  - Auth Testing: Select API key → View key permissions summary → Run individual endpoint test → View expected vs actual outcome → Run full test suite → Review pass/fail statistics → Expand results for detailed inspection → Clear results
   - API Playground: Select endpoint → Add API key → Configure parameters/body → Execute request → View response with status/time → Copy cURL command → Test different endpoints
   - Documentation: Browse API docs → View endpoint details → Copy code examples → Understand authentication → Review error codes
 - **Success criteria**:
@@ -181,6 +182,30 @@ This is a multi-tenant CRM with customer management, pipeline tracking, task man
     - Two-panel layout: request configuration | response/cURL
     - Category-based endpoint organization in dropdown
     - Mock response simulation for testing without live API
+  - Authentication testing system with:
+    - 12+ pre-configured test scenarios covering all resources (contacts, deals, tasks, emails, webhooks, reports)
+    - Support for testing both global permissions and resource-specific permissions
+    - Automatic permission validation against API key configuration
+    - Expected outcome prediction (success/forbidden/unauthorized) based on key permissions
+    - Actual vs expected outcome comparison for test validation
+    - Individual test execution for specific endpoints
+    - Bulk test execution for comprehensive validation (all 12 tests)
+    - Real-time simulated API requests with realistic delays (300-700ms)
+    - Test result tracking with timestamp, status code, and detailed messages
+    - Pass/fail statistics with visual indicators (green checkmark, red X)
+    - Expandable/collapsible result cards for detailed inspection
+    - Color-coded outcome badges (success=green, forbidden=red, unauthorized=red, error=yellow)
+    - Active key filtering (only show usable API keys)
+    - Key details summary showing permissions, expiry, rate limits
+    - Resource permission breakdown for granular keys
+    - Test scenarios include: read/write/delete operations across all resources
+    - Norwegian language interface for all labels and messages
+    - Mobile-responsive layout with scrollable test lists
+    - Clear test result messages explaining outcomes
+    - Visual distinction between test passes and failures
+    - Support for expired keys (401 Unauthorized)
+    - Support for insufficient permissions (403 Forbidden)
+    - Result persistence during session until manually cleared
   - Comprehensive API documentation in Norwegian
   - Rate limiting documentation (1000 req/hour)
   - Clear error codes and troubleshooting guide

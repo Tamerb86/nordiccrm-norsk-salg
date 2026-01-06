@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Key, Lightning, PlugsConnected, Book, Terminal } from '@phosphor-icons/react'
+import { Key, Lightning, PlugsConnected, Book, Terminal, ShieldCheck } from '@phosphor-icons/react'
 import { norwegianTranslations as t } from '@/lib/norwegian'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ApiKeysManager from '@/components/ApiKeysManager'
@@ -7,6 +7,7 @@ import WebhooksManager from '@/components/WebhooksManager'
 import IntegrationsManager from '@/components/IntegrationsManager'
 import ApiDocumentation from '@/components/ApiDocumentation'
 import ApiPlayground from '@/components/ApiPlayground'
+import ApiAuthTester from '@/components/ApiAuthTester'
 
 export default function ApiIntegrationsView() {
   const [activeTab, setActiveTab] = useState('api-keys')
@@ -23,7 +24,7 @@ export default function ApiIntegrationsView() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto">
           <TabsTrigger value="api-keys" className="gap-2">
             <Key size={18} />
             <span className="hidden sm:inline">{t.api.apiKeys}</span>
@@ -35,6 +36,10 @@ export default function ApiIntegrationsView() {
           <TabsTrigger value="integrations" className="gap-2">
             <PlugsConnected size={18} />
             <span className="hidden sm:inline">{t.api.integrations}</span>
+          </TabsTrigger>
+          <TabsTrigger value="auth-tester" className="gap-2">
+            <ShieldCheck size={18} />
+            <span className="hidden sm:inline">Auth Test</span>
           </TabsTrigger>
           <TabsTrigger value="playground" className="gap-2">
             <Terminal size={18} />
@@ -56,6 +61,10 @@ export default function ApiIntegrationsView() {
 
         <TabsContent value="integrations">
           <IntegrationsManager />
+        </TabsContent>
+
+        <TabsContent value="auth-tester">
+          <ApiAuthTester />
         </TabsContent>
 
         <TabsContent value="playground">
