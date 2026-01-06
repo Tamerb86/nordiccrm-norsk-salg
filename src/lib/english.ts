@@ -243,6 +243,10 @@ export const englishTranslations = {
     importExport: 'Import/Export',
     exportVariables: 'Export variables',
     importVariables: 'Import variables',
+    exportToCSV: 'Export to CSV',
+    exportContacts: 'Export contacts',
+    exportDeals: 'Export deals',
+    exportSuccess: 'Data exported',
   },
   api: {
     title: 'API Integrations',

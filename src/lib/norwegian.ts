@@ -243,6 +243,10 @@ export const norwegianTranslations = {
     importExport: 'Importer/Eksporter',
     exportVariables: 'Eksporter variabler',
     importVariables: 'Importer variabler',
+    exportToCSV: 'Eksporter til CSV',
+    exportContacts: 'Eksporter kontakter',
+    exportDeals: 'Eksporter avtaler',
+    exportSuccess: 'Data eksportert',
   },
   api: {
     title: 'API-integrasjoner',

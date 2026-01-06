@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, MagnifyingGlass, Pencil, Trash, Eye } from '@phosphor-icons/react'
+import { Plus, MagnifyingGlass, Pencil, Trash, Eye, Download } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
 import { generateId, getFullName, getInitials, getStatusColor, formatDate, filterBySearch } from '@/lib/helpers'
+import { exportContactsToCSV } from '@/lib/csv-export'
 import type { Contact, ContactStatus } from '@/lib/types'
 import ContactDetailView from '@/components/ContactDetailView'
 
@@ -67,34 +68,47 @@ export default function ContactsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{t.contact.title}</h2>
           <p className="text-muted-foreground mt-1">{t.contact.all}</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNewDialog} size="lg">
-              <Plus size={20} weight="bold" />
-              {t.contact.addNew}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingContact ? t.contact.edit : t.contact.addNew}
-              </DialogTitle>
-            </DialogHeader>
-            <ContactForm
-              contact={editingContact}
-              onSave={handleSaveContact}
-              onCancel={() => {
-                setIsDialogOpen(false)
-                setEditingContact(null)
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              exportContactsToCSV(safeContacts)
+              toast.success(t.common.exportSuccess)
+            }}
+            disabled={safeContacts.length === 0}
+          >
+            <Download size={20} weight="bold" />
+            {t.common.exportToCSV}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNewDialog} size="lg">
+                <Plus size={20} weight="bold" />
+                {t.contact.addNew}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingContact ? t.contact.edit : t.contact.addNew}
+                </DialogTitle>
+              </DialogHeader>
+              <ContactForm
+                contact={editingContact}
+                onSave={handleSaveContact}
+                onCancel={() => {
+                  setIsDialogOpen(false)
+                  setEditingContact(null)
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative">

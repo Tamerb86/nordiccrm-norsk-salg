@@ -1,6 +1,6 @@
 import { useState, DragEvent, useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Plus, Eye, EyeSlash, FunnelSimple, X } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash, FunnelSimple, X, Download } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { useLanguage } from '@/lib/language-context'
 import { defaultPipelineStages } from '@/lib/norwegian'
 import { generateId, formatCurrency, getFullName } from '@/lib/helpers'
+import { exportDealsToCSV } from '@/lib/csv-export'
 import { cn } from '@/lib/utils'
 import type { Deal, Contact, PipelineStage } from '@/lib/types'
 import DealDetailView from '@/components/DealDetailView'
@@ -232,7 +233,18 @@ export default function PipelineView() {
             {activeFilterCount > 0 && ` • ${activeFilterCount} filter aktiv`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => {
+              exportDealsToCSV(filteredDeals, safeContacts)
+              toast.success(t.common.exportSuccess)
+            }}
+            disabled={filteredDeals.length === 0}
+          >
+            <Download size={20} weight="bold" />
+            {t.common.exportToCSV}
+          </Button>
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
