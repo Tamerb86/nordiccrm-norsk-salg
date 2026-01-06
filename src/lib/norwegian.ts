@@ -312,6 +312,7 @@ export const norwegianTranslations = {
     allRightsReserved: 'Alle rettigheter reservert',
     madeIn: 'Laget i Norge med',
     version: 'Versjon',
+    language: 'Språk',
   },
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected } from '@phosphor-icons/react'
-import { norwegianTranslations as t } from '@/lib/norwegian'
+import { useLanguage } from '@/lib/language-context'
 import Dashboard from '@/components/Dashboard'
 import ContactsView from '@/components/ContactsView'
 import PipelineView from '@/components/PipelineView'
@@ -14,6 +14,7 @@ import { Toaster } from '@/components/ui/sonner'
 type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api'
 
 function App() {
+  const { t } = useLanguage()
   const [currentView, setCurrentView] = useState<View>('dashboard')
 
   const navItems = [

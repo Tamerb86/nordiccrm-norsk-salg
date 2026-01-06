@@ -1,8 +1,16 @@
-import { ChartBar, Heart, Shield, Lock, Book, EnvelopeSimple } from '@phosphor-icons/react'
-import { norwegianTranslations as t } from '@/lib/norwegian'
+import { ChartBar, Heart, Shield, Lock, Book, Globe } from '@phosphor-icons/react'
+import { useLanguage } from '@/lib/language-context'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function Footer() {
+  const { t, language, setLanguage } = useLanguage()
   const currentYear = new Date().getFullYear()
 
   const footerLinks = {
@@ -157,14 +165,39 @@ export default function Footer() {
             </span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Globe size={16} weight="duotone" />
+                  <span className="text-xs font-medium">{language === 'no' ? '🇳🇴 Norsk' : '🇬🇧 English'}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setLanguage('no')} className="gap-2">
+                  <span>🇳🇴</span>
+                  <span>Norsk</span>
+                  {language === 'no' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage('en')} className="gap-2">
+                  <span>🇬🇧</span>
+                  <span>English</span>
+                  {language === 'en' && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-md">
               <Shield size={16} className="text-accent" weight="duotone" />
-              <span className="text-xs font-medium text-muted-foreground">GDPR-kompatibel</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {language === 'no' ? 'GDPR-kompatibel' : 'GDPR Compliant'}
+              </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-md">
               <Lock size={16} className="text-accent" weight="duotone" />
-              <span className="text-xs font-medium text-muted-foreground">SSL Sikker</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {language === 'no' ? 'SSL Sikker' : 'SSL Secure'}
+              </span>
             </div>
           </div>
         </div>
