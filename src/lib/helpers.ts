@@ -1,5 +1,4 @@
 import { format, parseISO, isAfter, isBefore, startOfDay, addDays, addWeeks, addMonths } from 'date-fns'
-import { nb } from 'date-fns/locale'
 import type { RecurrencePattern, EmailRecurrence } from './types'
 
 export function generateId(): string {
@@ -21,12 +20,12 @@ export function formatNumber(num: number): string {
 
 export function formatDate(date: string | Date): string {
   const dateObj = typeof date === 'string' ? parseISO(date) : date
-  return format(dateObj, 'dd.MM.yyyy', { locale: nb })
+  return format(dateObj, 'dd.MM.yyyy')
 }
 
 export function formatDateTime(date: string | Date): string {
   const dateObj = typeof date === 'string' ? parseISO(date) : date
-  return format(dateObj, 'dd.MM.yyyy HH:mm', { locale: nb })
+  return format(dateObj, 'dd.MM.yyyy HH:mm')
 }
 
 export function formatRelativeDate(date: string | Date): string {
@@ -254,7 +253,7 @@ export const availableTemplateVariables: TemplateVariable[] = [
     key: 'today',
     label: 'Dagens dato',
     description: 'Dagens dato',
-    example: format(new Date(), 'dd.MM.yyyy', { locale: nb })
+    example: format(new Date(), 'dd.MM.yyyy')
   }
 ]
 
@@ -286,7 +285,7 @@ export function replaceTemplateVariables(
     '{company}': contact.company || '[Selskap]',
     '{status}': contact.status || '[Status]',
     '{value}': contact.value ? formatCurrency(contact.value) : '[Verdi]',
-    '{today}': format(new Date(), 'dd.MM.yyyy', { locale: nb })
+    '{today}': format(new Date(), 'dd.MM.yyyy')
   }
 
   if (customValues) {
