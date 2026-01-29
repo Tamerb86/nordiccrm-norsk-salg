@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { useDemoAccounts } from './use-demo-accounts'
+import { rolePermissions } from './role-permissions'
 import type { UserRole, TeamMember } from './types'
 
 interface AuthUser {
@@ -83,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false
     
-    const { rolePermissions } = require('./role-permissions')
     const permissions = rolePermissions[user.role]
     const resourcePermissions = permissions[resource] as Record<string, boolean> | undefined
     
