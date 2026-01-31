@@ -29,15 +29,10 @@ export class ApiClient {
     body?: any
   ): Promise<ApiResponse<T>> {
     try {
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      }
-
       const result = await apiServer.handleRequest(
-        `${this.baseUrl}${path}`,
         method,
-        headers,
+        `${this.baseUrl}${path}`,
+        this.apiKey,
         body
       )
 
