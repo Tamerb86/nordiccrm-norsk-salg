@@ -117,7 +117,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
               <p>Admin: admin@crm.no</p>
               <p>Manager: manager@crm.no</p>
               <p>Sales: sales@crm.no</p>
-              <p className="mt-2 italic">{t.auth?.anyPassword || 'Password: any value'}</p>
+              <p className="mt-2 font-semibold text-foreground">{t.auth?.demoPassword || 'Password: demo123'}</p>
             </div>
           </div>
         </CardContent>

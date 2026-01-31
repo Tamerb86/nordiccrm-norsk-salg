@@ -1,17 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { useDemoAccounts } from './use-demo-accounts'
+import { authApi, type AuthUser } from './auth-api'
 import { rolePermissions } from './role-permissions'
-import type { UserRole, TeamMember } from './types'
-
-interface AuthUser {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  role: UserRole
-  avatar?: string
-}
 
 interface AuthContextType {
   user: AuthUser | null
@@ -29,56 +20,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [currentUserId, setCurrentUserId] = useKV<string | null>('current-user-id', null)
-  const [teamMembers] = useKV<TeamMember[]>('team-members', [])
+  const [authToken, setAuthToken] = useKV<string | null>('auth-token', null)
 
   useEffect(() => {
     const initAuth = async () => {
-      if (currentUserId) {
-        const member = (teamMembers || []).find(m => m.id === currentUserId)
-        if (member && member.isActive) {
-          setUser({
-            id: member.id,
-            email: member.email,
-            firstName: member.firstName,
-            lastName: member.lastName,
-            role: member.role,
-            avatar: member.avatar,
-          })
+      if (authToken) {
+        const response = await authApi.verifyToken(authToken)
+        
+        if (response.success && response.user) {
+          setUser(response.user)
         } else {
-          setCurrentUserId(null)
+          setAuthToken(null)
         }
       }
       setIsLoading(false)
     }
 
     initAuth()
-  }, [currentUserId, teamMembers, setCurrentUserId])
+  }, [authToken, setAuthToken])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const member = (teamMembers || []).find(
-      m => m.email.toLowerCase() === email.toLowerCase() && m.isActive
-    )
-
-    if (member) {
-      setUser({
-        id: member.id,
-        email: member.email,
-        firstName: member.firstName,
-        lastName: member.lastName,
-        role: member.role,
-        avatar: member.avatar,
-      })
-      setCurrentUserId(member.id)
+    const response = await authApi.login(email, password)
+    
+    if (response.success && response.token && response.user) {
+      setUser(response.user)
+      setAuthToken(response.token)
       return true
     }
-
+    
     return false
   }
 
-  const logout = () => {
+  const logout = async () => {
+    if (user) {
+      await authApi.logout(user.id)
+    }
     setUser(null)
-    setCurrentUserId(null)
+    setAuthToken(null)
   }
 
   const hasPermission = (resource: string, action: string): boolean => {

@@ -451,6 +451,7 @@ export const englishTranslations = {
     loggingIn: 'Logging in...',
     demoAccounts: 'Demo Accounts:',
     anyPassword: 'Password: any value',
+    demoPassword: 'Password: demo123',
     accessDenied: 'Access Denied',
     noPermission: 'You do not have permission to access this feature.',
     forgotPassword: 'Forgot password?',

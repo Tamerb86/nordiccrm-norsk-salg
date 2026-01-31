@@ -451,6 +451,7 @@ export const norwegianTranslations = {
     loggingIn: 'Logger inn...',
     demoAccounts: 'Demo-kontoer:',
     anyPassword: 'Passord: hvilken som helst verdi',
+    demoPassword: 'Passord: demo123',
     accessDenied: 'Tilgang nektet',
     noPermission: 'Du har ikke tillatelse til å få tilgang til denne funksjonen.',
     forgotPassword: 'Glemt passord?',
