@@ -1,5 +1,3 @@
-import crypto from 'crypto'
-
 const MOCK_API_KEY = 'test_api_key_12345'
 
 interface ApiKeyData {
@@ -18,6 +16,7 @@ interface ApiKeyData {
 
 interface WebhookData {
   id: string
+  name: string
   url: string
   events: string[]
   secret: string
@@ -25,18 +24,40 @@ interface WebhookData {
   createdAt: string
 }
 
+async function generateHmacSignature(secret: string, message: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const keyData = encoder.encode(secret)
+  const messageData = encoder.encode(message)
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData)
+  const hashArray = Array.from(new Uint8Array(signature))
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  
+  return hashHex
+}
+
 class ApiServer {
   private baseUrl = '/api/v1'
 
   private async validateApiKey(apiKey: string): Promise<boolean> {
-    if (apiKey === MOCK_API_KEY) return true
-    
-    const apiKeys = await spark.kv.get<ApiKeyData[]>('api-keys') || []
+    if (apiKey === MOCK_API_KEY) {
+      return true
+    }
+
+    const apiKeys = await window.spark.kv.get<ApiKeyData[]>('api-keys') || []
     const key = apiKeys.find(k => k.key === apiKey && k.isActive)
     
     if (key) {
       key.lastUsedAt = new Date().toISOString()
-      await spark.kv.set('api-keys', apiKeys)
+      await window.spark.kv.set('api-keys', apiKeys)
       return true
     }
     
@@ -48,20 +69,23 @@ class ApiServer {
     resource: string,
     action: string
   ): Promise<boolean> {
-    if (apiKey === MOCK_API_KEY) return true
-    
-    const apiKeys = await spark.kv.get<ApiKeyData[]>('api-keys') || []
+    if (apiKey === MOCK_API_KEY) {
+      return true
+    }
+
+    const apiKeys = await window.spark.kv.get<ApiKeyData[]>('api-keys') || []
     const key = apiKeys.find(k => k.key === apiKey && k.isActive)
     
-    if (!key) return false
-    
-    if (key.permissions.includes('admin')) return true
-    
+    if (!key) {
+      return false
+    }
+
+    if (key.permissions.includes('*') || key.permissions.includes(`${resource}:*`)) {
+      return true
+    }
+
     if (key.resourcePermissions) {
-      const resourcePerm = key.resourcePermissions.find(
-        r => r.resource === resource || r.resource === 'all'
-      )
-      
+      const resourcePerm = key.resourcePermissions.find(rp => rp.resource === resource)
       if (resourcePerm && resourcePerm.actions.includes(action)) {
         return true
       }
@@ -71,7 +95,7 @@ class ApiServer {
   }
 
   private async triggerWebhooks(event: string, data: any) {
-    const webhooks = await spark.kv.get<WebhookData[]>('webhooks') || []
+    const webhooks = await window.spark.kv.get<WebhookData[]>('webhooks') || []
     const activeWebhooks = webhooks.filter(w => 
       w.isActive && w.events.includes(event)
     )
@@ -84,10 +108,7 @@ class ApiServer {
           data,
         }
 
-        const signature = crypto
-          .createHmac('sha256', webhook.secret)
-          .update(JSON.stringify(payload))
-          .digest('hex')
+        const signature = await generateHmacSignature(webhook.secret, JSON.stringify(payload))
 
         await fetch(webhook.url, {
           method: 'POST',
@@ -168,7 +189,7 @@ class ApiServer {
     body: any,
     apiKey: string
   ): Promise<{ status: number; data: any }> {
-    const contacts = await spark.kv.get<any[]>('contacts') || []
+    const contacts = await window.spark.kv.get<any[]>('contacts') || []
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'read')
@@ -190,7 +211,7 @@ class ApiServer {
         createdAt: new Date().toISOString(),
       }
       contacts.push(newContact)
-      await spark.kv.set('contacts', contacts)
+      await window.spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.created', newContact)
 
       return { status: 201, data: { data: newContact } }
@@ -225,7 +246,7 @@ class ApiServer {
         updatedAt: new Date().toISOString(),
       }
       contacts[index] = updatedContact
-      await spark.kv.set('contacts', contacts)
+      await window.spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.updated', updatedContact)
 
       return { status: 200, data: { data: updatedContact } }
@@ -243,7 +264,7 @@ class ApiServer {
       }
       const deletedContact = contacts[index]
       contacts.splice(index, 1)
-      await spark.kv.set('contacts', contacts)
+      await window.spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.deleted', deletedContact)
 
       return { status: 204, data: {} }
@@ -258,7 +279,7 @@ class ApiServer {
     body: any,
     apiKey: string
   ): Promise<{ status: number; data: any }> {
-    const deals = await spark.kv.get<any[]>('deals') || []
+    const deals = await window.spark.kv.get<any[]>('deals') || []
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'deals', 'read')
@@ -281,7 +302,7 @@ class ApiServer {
         updatedAt: new Date().toISOString(),
       }
       deals.push(newDeal)
-      await spark.kv.set('deals', deals)
+      await window.spark.kv.set('deals', deals)
       await this.triggerWebhooks('deal.created', newDeal)
 
       return { status: 201, data: { data: newDeal } }
@@ -304,7 +325,7 @@ class ApiServer {
         stage: body.stage,
         updatedAt: new Date().toISOString(),
       }
-      await spark.kv.set('deals', deals)
+      await window.spark.kv.set('deals', deals)
       await this.triggerWebhooks('deal.stage_changed', {
         deal: deals[index],
         previousStage: oldStage,
@@ -323,7 +344,7 @@ class ApiServer {
     body: any,
     apiKey: string
   ): Promise<{ status: number; data: any }> {
-    const tasks = await spark.kv.get<any[]>('tasks') || []
+    const tasks = await window.spark.kv.get<any[]>('tasks') || []
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'read')
@@ -345,7 +366,7 @@ class ApiServer {
         createdAt: new Date().toISOString(),
       }
       tasks.push(newTask)
-      await spark.kv.set('tasks', tasks)
+      await window.spark.kv.set('tasks', tasks)
       await this.triggerWebhooks('task.created', newTask)
 
       return { status: 201, data: { data: newTask } }
@@ -367,7 +388,7 @@ class ApiServer {
         completed: true,
         updatedAt: new Date().toISOString(),
       }
-      await spark.kv.set('tasks', tasks)
+      await window.spark.kv.set('tasks', tasks)
       await this.triggerWebhooks('task.completed', tasks[index])
 
       return { status: 200, data: { data: tasks[index] } }
@@ -382,7 +403,7 @@ class ApiServer {
     body: any,
     apiKey: string
   ): Promise<{ status: number; data: any }> {
-    const emails = await spark.kv.get<any[]>('emails') || []
+    const emails = await window.spark.kv.get<any[]>('emails') || []
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'emails', 'read')
@@ -408,7 +429,7 @@ class ApiServer {
         createdAt: new Date().toISOString(),
       }
       emails.push(newEmail)
-      await spark.kv.set('emails', emails)
+      await window.spark.kv.set('emails', emails)
       await this.triggerWebhooks('email.sent', newEmail)
 
       return { status: 201, data: { data: newEmail } }
