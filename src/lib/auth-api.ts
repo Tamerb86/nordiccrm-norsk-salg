@@ -2,20 +2,20 @@ import type { UserRole } from './types'
 
 const spark = window.spark
 
-export interface AuthUser {
+interface AuthUser {
   id: string
   email: string
   firstName: string
   lastName: string
   role: UserRole
   avatar?: string
-  emailVerified?: boolean
+  emailVerified: boolean
 }
 
 interface LoginResponse {
   success: boolean
-  user?: AuthUser
   token?: string
+  user?: AuthUser
   error?: string
 }
 
@@ -31,33 +31,27 @@ interface PasswordResetResponse {
   error?: string
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-}
-
 function generateToken(userId: string, role: UserRole): string {
-  const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }))
-  const payload = btoa(JSON.stringify({ userId, role, iat: Date.now() }))
-  const signature = btoa(`${header}.${payload}`)
-  return `${header}.${payload}.${signature}`
+  const payload = btoa(JSON.stringify({ userId, role, exp: Date.now() + 86400000 }))
+  return `token.${payload}`
 }
 
 function verifyToken(token: string): { userId: string; role: UserRole } | null {
   try {
     const [, payload] = token.split('.')
-    if (!payload) return null
     const decoded = JSON.parse(atob(payload))
+    if (decoded.exp < Date.now()) return null
     return { userId: decoded.userId, role: decoded.role }
   } catch {
     return null
   }
 }
 
-export const authAPI = {
+async function hashPassword(password: string): Promise<string> {
+  return btoa(password)
+}
+
+export const authApi = {
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
       const usersData = await spark.kv.get<Record<string, any>>('auth-users') || {}

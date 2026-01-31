@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
+import { createApiClient } from '@/lib/api-client'
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -224,35 +225,77 @@ export default function ApiPlayground() {
     const startTime = Date.now()
 
     try {
+      const client = createApiClient(apiKey)
+      let result: any
+      let parsedBody: any = null
+
+      if (requestBody && ['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method)) {
+        try {
+          parsedBody = JSON.parse(requestBody)
+        } catch (e) {
+          throw new Error('Ugyldig JSON i request body')
+        }
+      }
+
       let path = selectedEndpoint.path
-      if (pathParams && path.includes(':id')) {
-        path = path.replace(':id', pathParams)
+      const pathId = pathParams || 'example_id'
+      if (path.includes(':id')) {
+        path = path.replace(':id', pathId)
       }
 
-      if (queryParams) {
-        path += `?${queryParams}`
+      if (path === '/api/contacts' && selectedEndpoint.method === 'GET') {
+        result = await client.getContacts()
+      } else if (path === '/api/contacts' && selectedEndpoint.method === 'POST') {
+        result = await client.createContact(parsedBody)
+      } else if (path.includes('/api/contacts/') && selectedEndpoint.method === 'GET') {
+        result = await client.getContact(pathId)
+      } else if (path.includes('/api/contacts/') && selectedEndpoint.method === 'PUT') {
+        result = await client.updateContact(pathId, parsedBody)
+      } else if (path.includes('/api/contacts/') && selectedEndpoint.method === 'DELETE') {
+        result = await client.deleteContact(pathId)
+      } else if (path === '/api/deals' && selectedEndpoint.method === 'GET') {
+        result = await client.getDeals()
+      } else if (path === '/api/deals' && selectedEndpoint.method === 'POST') {
+        result = await client.createDeal(parsedBody)
+      } else if (path.includes('/api/deals/') && path.includes('/stage') && selectedEndpoint.method === 'PATCH') {
+        result = await client.updateDealStage(pathId, parsedBody.stage, parsedBody.probability)
+      } else if (path === '/api/tasks' && selectedEndpoint.method === 'GET') {
+        result = await client.getTasks()
+      } else if (path === '/api/tasks' && selectedEndpoint.method === 'POST') {
+        result = await client.createTask(parsedBody)
+      } else if (path.includes('/api/tasks/') && path.includes('/complete') && selectedEndpoint.method === 'PATCH') {
+        result = await client.completeTask(pathId)
+      } else if (path === '/api/emails' && selectedEndpoint.method === 'GET') {
+        result = await client.getEmails()
+      } else if (path === '/api/emails/send' && selectedEndpoint.method === 'POST') {
+        result = await client.sendEmail(parsedBody)
+      } else if (path.includes('/api/emails/') && path.includes('/stats') && selectedEndpoint.method === 'GET') {
+        result = await client.getEmailStats(pathId)
+      } else {
+        result = {
+          error: {
+            code: 'NOT_IMPLEMENTED',
+            message: 'Dette endepunktet er ikke implementert ennå',
+          },
+        }
       }
-
-      const mockResponse = {
-        data: {
-          message: 'Dette er en simulert respons. I produksjon ville dette vært et reelt API-kall.',
-          endpoint: path,
-          method: selectedEndpoint.method,
-          timestamp: new Date().toISOString(),
-        },
-        success: true,
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400))
 
       const endTime = Date.now()
       setResponseTime(endTime - startTime)
-      setResponseStatus(200)
-      setResponse(JSON.stringify(mockResponse, null, 2))
 
-      toast.success('Forespørsel fullført', {
-        description: `${selectedEndpoint.method} ${path}`,
-      })
+      if (result.error) {
+        setResponseStatus(result.error.code === 'UNAUTHORIZED' ? 401 : result.error.code === 'FORBIDDEN' ? 403 : result.error.code === 'NOT_FOUND' ? 404 : 400)
+        setResponse(JSON.stringify(result, null, 2))
+        toast.error('Forespørsel feilet', {
+          description: result.error.message,
+        })
+      } else {
+        setResponseStatus(selectedEndpoint.method === 'POST' ? 201 : selectedEndpoint.method === 'DELETE' ? 204 : 200)
+        setResponse(JSON.stringify(result, null, 2))
+        toast.success('Forespørsel fullført', {
+          description: `${selectedEndpoint.method} ${path}`,
+        })
+      }
     } catch (error) {
       const endTime = Date.now()
       setResponseTime(endTime - startTime)

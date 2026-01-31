@@ -1,8 +1,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { useDemoAccounts } from './use-demo-accounts'
-import { authAPI, type AuthUser } from './auth-api'
+import { authApi } from './auth-api'
 import { rolePermissions } from './role-permissions'
+
+interface AuthUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  avatar?: string
+  emailVerified: boolean
+}
 
 interface AuthContextType {
   user: AuthUser | null
@@ -25,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       if (authToken) {
-        const response = await authAPI.validateSession(authToken)
+        const response = await authApi.validateSession(authToken)
         
         if (response.success && response.user) {
           setUser(response.user)
@@ -40,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authToken, setAuthToken])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const response = await authAPI.login(email, password)
+    const response = await authApi.login(email, password)
     
     if (response.success && response.token && response.user) {
       setUser(response.user)
@@ -53,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     if (user) {
-      await authAPI.logout(user.id)
+      await authApi.logout(user.id)
     }
     setUser(null)
     setAuthToken(null)
@@ -62,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPermission = (resource: string, action: string): boolean => {
     if (!user) return false
     
-    const permissions = rolePermissions[user.role]
-    const resourcePermissions = permissions[resource] as Record<string, boolean> | undefined
+    const permissions = rolePermissions[user.role as keyof typeof rolePermissions]
+    const resourcePermissions = permissions?.[resource as keyof typeof permissions] as Record<string, boolean> | undefined
     
     if (!resourcePermissions) return false
     return resourcePermissions[action] || false

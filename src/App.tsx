@@ -95,17 +95,17 @@ function App() {
   }
 
   const allNavItems = [
-    { id: 'dashboard' as View, label: t.nav.dashboard, icon: House, resource: 'contacts' },
-    { id: 'contacts' as View, label: t.nav.contacts, icon: Users, resource: 'contacts' },
-    { id: 'pipeline' as View, label: t.nav.pipeline, icon: Target, resource: 'deals' },
-    { id: 'tasks' as View, label: t.nav.tasks, icon: ListChecks, resource: 'tasks' },
-    { id: 'emails' as View, label: t.email.title, icon: EnvelopeSimple, resource: 'emails' },
-    { id: 'api' as View, label: t.api.title, icon: PlugsConnected, resource: 'api' },
-    { id: 'team' as View, label: t.team.title, icon: UserCircleGear, resource: 'team' },
+    { id: 'dashboard' as View, label: t.nav.dashboard, icon: House, resource: 'contacts' as const },
+    { id: 'contacts' as View, label: t.nav.contacts, icon: Users, resource: 'contacts' as const },
+    { id: 'pipeline' as View, label: t.nav.pipeline, icon: Target, resource: 'deals' as const },
+    { id: 'tasks' as View, label: t.nav.tasks, icon: ListChecks, resource: 'tasks' as const },
+    { id: 'emails' as View, label: t.email.title, icon: EnvelopeSimple, resource: 'emails' as const },
+    { id: 'api' as View, label: t.api.title, icon: PlugsConnected, resource: 'api' as const },
+    { id: 'team' as View, label: t.team.title, icon: UserCircleGear, resource: 'team' as const },
   ]
 
   const navItems = allNavItems.filter(item => 
-    user ? canAccessResource(user.role, item.resource as any) : false
+    user ? canAccessResource(user.role as any, item.resource) : false
   )
 
   return (
