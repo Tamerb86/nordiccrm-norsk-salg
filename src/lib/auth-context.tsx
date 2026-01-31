@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { useDemoAccounts } from './use-demo-accounts'
-import { authApi, type AuthUser } from './auth-api'
+import { authAPI, type AuthUser } from './auth-api'
 import { rolePermissions } from './role-permissions'
 
 interface AuthContextType {
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       if (authToken) {
-        const response = await authApi.verifyToken(authToken)
+        const response = await authAPI.validateSession(authToken)
         
         if (response.success && response.user) {
           setUser(response.user)
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [authToken, setAuthToken])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const response = await authApi.login(email, password)
+    const response = await authAPI.login(email, password)
     
     if (response.success && response.token && response.user) {
       setUser(response.user)
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     if (user) {
-      await authApi.logout(user.id)
+      await authAPI.logout(user.id)
     }
     setUser(null)
     setAuthToken(null)
