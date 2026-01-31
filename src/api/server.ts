@@ -31,7 +31,7 @@ export class ApiServer {
       return true
     }
 
-  private async 
+    return false
   }
 
   private async checkPermission(apiKey: string, resource: string, action: string): Promise<boolean> {
@@ -58,8 +58,8 @@ export class ApiServer {
       const resourcePerm = key.resourcePermissions.find(rp => rp.resource === resource)
       if (resourcePerm && (resourcePerm.actions.includes('*') || resourcePerm.actions.includes(action))) {
         return true
-  }
-  pri
+      }
+    }
 
     return false
   }
@@ -99,40 +99,44 @@ export class ApiServer {
       }
     }
 
-
-      const parts =
-      if (part
-      }
-        return await this.handleDealsRequest(method, parts, apiKey, body)
-      i
-     
-
-
-        status: 404,
-      
+    const isValid = await this.validateApiKey(apiKey)
+    if (!isValid) {
       return {
-        data: { error: { code: 'INTERNAL_ERROR', message: 'Intern serverfeil
+        status: 401,
+        data: { error: { code: 'UNAUTHORIZED', message: 'Ugyldig API-nøkkel' } },
+      }
     }
 
-    method: string,
-    api
-  ): Promise<{ status: number; da
-
-      c
-        return { status: 403, data
-      return { status: 200, data: { data: contacts } }
-
-
-        return
-      const newConta
-        id: Date.now().toString(),
+    try {
+      const parts = path.split('/').filter(p => p)
+      
+      if (parts[0] === 'contacts') {
+        return await this.handleContactsRequest(method, parts, apiKey, body)
       }
-      await window.sp
+      
+      if (parts[0] === 'deals') {
+        return await this.handleDealsRequest(method, parts, apiKey, body)
+      }
+      
+      if (parts[0] === 'tasks') {
+        return await this.handleTasksRequest(method, parts, apiKey, body)
+      }
+      
+      if (parts[0] === 'emails') {
+        return await this.handleEmailsRequest(method, parts, apiKey, body)
+      }
+
+      return {
+        status: 404,
+        data: { error: { code: 'NOT_FOUND', message: 'Endpoint ikke funnet' } },
+      }
+    } catch (error) {
+      console.error('API error:', error)
       return {
         status: 500,
         data: { error: { code: 'INTERNAL_ERROR', message: 'Intern serverfeil' } },
-      i
-     
+      }
+    }
   }
 
   private async handleContactsRequest(
@@ -145,11 +149,11 @@ export class ApiServer {
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'read')
-        return { status: 40
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-       
+      }
       return { status: 200, data: { data: contacts } }
-
+    }
 
     if (method === 'POST' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'create')
@@ -176,7 +180,7 @@ export class ApiServer {
       if (!contact) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Kontakt ikke funnet' } } }
       }
-      if (!hasPermission) {
+      return { status: 200, data: { data: contact } }
     }
 
     if (method === 'PATCH' && parts.length === 2) {
@@ -185,45 +189,45 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       const index = contacts.findIndex(c => c.id === parts[1])
-        createdAt: new Da
+      if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Kontakt ikke funnet' } } }
-      a
+      }
       const updatedContact = {
-    }
+        ...contacts[index],
         ...body,
       }
       contacts[index] = updatedContact
       await window.spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.updated', updatedContact)
       return { status: 200, data: { data: updatedContact } }
-     
+    }
 
     if (method === 'DELETE' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'delete')
-        return { status: 40
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      i
+      }
       const index = contacts.findIndex(c => c.id === parts[1])
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Kontakt ikke funnet' } } }
       }
       const deletedContact = contacts[index]
-      await this.triggerWebhook
+      contacts.splice(index, 1)
       await window.spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.deleted', deletedContact)
       return { status: 200, data: { data: { success: true } } }
     }
 
     return {
-        return { s
+      status: 405,
       data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke tillatt' } },
-     
+    }
   }
 
   private async handleDealsRequest(
     method: string,
     parts: string[],
-    }
+    apiKey: string,
     body: any
   ): Promise<{ status: number; data: any }> {
     const deals = await window.spark.kv.get<any[]>('deals') || []
@@ -244,7 +248,7 @@ export class ApiServer {
       const newDeal = {
         ...body,
         id: Date.now().toString(),
-      return { status: 201, data: { data: ne
+        createdAt: new Date().toISOString(),
       }
       deals.push(newDeal)
       await window.spark.kv.set('deals', deals)
@@ -258,24 +262,24 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       const deal = deals.find(d => d.id === parts[1])
-        return { s
+      if (!deal) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Deal ikke funnet' } } }
-       
+      }
       return { status: 200, data: { data: deal } }
     }
 
-      return { status: 200, data: { data: updatedTa
+    if (method === 'PATCH' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'deals', 'update')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-       
+      }
       const index = deals.findIndex(d => d.id === parts[1])
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Deal ikke funnet' } } }
       }
-        completed: true,
+      const updatedDeal = {
         ...deals[index],
-      tasks[inde
+        ...body,
       }
       deals[index] = updatedDeal
       await window.spark.kv.set('deals', deals)
@@ -292,20 +296,20 @@ export class ApiServer {
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Deal ikke funnet' } } }
       }
-  }
+      const deletedDeal = deals[index]
       deals.splice(index, 1)
-    method: string,
+      await window.spark.kv.set('deals', deals)
       await this.triggerWebhooks('deal.deleted', deletedDeal)
       return { status: 200, data: { data: { success: true } } }
-    c
+    }
 
     return {
       status: 405,
       data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke tillatt' } },
     }
+  }
 
-
-      if (!hasPermission) {
+  private async handleTasksRequest(
     method: string,
     parts: string[],
     apiKey: string,
@@ -313,21 +317,21 @@ export class ApiServer {
   ): Promise<{ status: number; data: any }> {
     const tasks = await window.spark.kv.get<any[]>('tasks') || []
 
-      return { status: 201, data: { data: newEmai
+    if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'read')
-    if (method === 'GET' &&
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       return { status: 200, data: { data: tasks } }
-     
+    }
 
     if (method === 'POST' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'create')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-       
+      }
       const newTask = {
-        return {
+        ...body,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       }
@@ -343,36 +347,36 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       const task = tasks.find(t => t.id === parts[1])
-
+      if (!task) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Oppgave ikke funnet' } } }
-
+      }
       return { status: 200, data: { data: task } }
     }
 
     if (method === 'PATCH' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'update')
-
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-
-
+      }
+      const index = tasks.findIndex(t => t.id === parts[1])
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Oppgave ikke funnet' } } }
       }
-
+      const updatedTask = {
         ...tasks[index],
         ...body,
       }
       tasks[index] = updatedTask
       await window.spark.kv.set('tasks', tasks)
       await this.triggerWebhooks('task.updated', updatedTask)
-
+      return { status: 200, data: { data: updatedTask } }
     }
 
     if (method === 'PATCH' && parts.length === 3 && parts[2] === 'complete') {
-
+      const hasPermission = await this.checkPermission(apiKey, 'tasks', 'update')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-
+      }
       const index = tasks.findIndex(t => t.id === parts[1])
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Oppgave ikke funnet' } } }
@@ -383,10 +387,10 @@ export class ApiServer {
         completedAt: new Date().toISOString(),
       }
       tasks[index] = completedTask
-
+      await window.spark.kv.set('tasks', tasks)
       await this.triggerWebhooks('task.completed', completedTask)
       return { status: 200, data: { data: completedTask } }
-
+    }
 
     if (method === 'DELETE' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'delete')
@@ -404,13 +408,13 @@ export class ApiServer {
       return { status: 200, data: { data: { success: true } } }
     }
 
-
+    return {
       status: 405,
       data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke tillatt' } },
     }
   }
 
-
+  private async handleEmailsRequest(
     method: string,
     parts: string[],
     apiKey: string,
@@ -418,28 +422,28 @@ export class ApiServer {
   ): Promise<{ status: number; data: any }> {
     const emails = await window.spark.kv.get<any[]>('emails') || []
 
-
+    if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'emails', 'read')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       return { status: 200, data: { data: emails } }
+    }
 
-
-
+    if (method === 'POST' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'emails', 'create')
-
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-
+      }
       const newEmail = {
         ...body,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
-
+        status: 'sent',
       }
       emails.push(newEmail)
       await window.spark.kv.set('emails', emails)
-
+      await this.triggerWebhooks('email.sent', newEmail)
       return { status: 201, data: { data: newEmail } }
     }
 
@@ -449,17 +453,17 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
       const email = emails.find(e => e.id === parts[1])
-
+      if (!email) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'E-post ikke funnet' } } }
-
+      }
       return { status: 200, data: { data: email } }
-
+    }
 
     if (method === 'GET' && parts.length === 3 && parts[2] === 'tracking') {
       const hasPermission = await this.checkPermission(apiKey, 'emails', 'read')
-
+      if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-
+      }
       const email = emails.find(e => e.id === parts[1])
       if (!email) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'E-post ikke funnet' } } }
@@ -475,13 +479,13 @@ export class ApiServer {
           }
         }
       }
-
-
-
-      status: 405,
-
     }
 
+    return {
+      status: 405,
+      data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke tillatt' } },
+    }
+  }
 }
 
 export const apiServer = new ApiServer()
