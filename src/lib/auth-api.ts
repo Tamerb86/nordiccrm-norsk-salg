@@ -1,37 +1,46 @@
 import type { UserRole } from './types'
 
-  email: string
-  lastName: 
+declare global {
+  interface Window {
+    spark: {
+      kv: {
+        get: <T>(key: string) => Promise<T | undefined>
+        set: <T>(key: string, value: T) => Promise<void>
+        delete: (key: string) => Promise<void>
+      }
+    }
+  }
+}
+
+const spark = window.spark
+
+export interface AuthUser {
+  id: string
   email: string
   firstName: string
   lastName: string
   role: UserRole
-  error?: string
-
- 
-
+  avatar?: string
+  emailVerified?: boolean
 }
+
+interface LoginResponse {
+  success: boolean
+  token?: string
+  user?: AuthUser
+  error?: string
+}
+
+interface RegisterResponse {
+  success: boolean
+  token?: string
+  user?: AuthUser
+  error?: string
+}
+
+interface PasswordResetResponse {
   success: boolean
   error?: string
-
-  error?: string
-}
-
-  const data = encoder.encode(passw
-  const hashArray 
-}
-function generate
-  const payload 
- 
-
-  return `${header}.${payload}.${signatu
-
-  try {
- 
-
-    }
-    return { userI
-    return null
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -70,7 +79,7 @@ function verifyToken(token: string): { userId: string; role: UserRole } | null {
 
 export const authAPI = {
   async login(email: string, password: string): Promise<LoginResponse> {
-         
+    try {
       const hashedPassword = await hashPassword(password)
       const usersData = await spark.kv.get<Record<string, any>>('auth-users') || {}
       
@@ -80,13 +89,13 @@ export const authAPI = {
       })
 
       if (!userKey) {
-    lastName: string,
+        return { success: false, error: 'Invalid email or password' }
       }
 
       const user = usersData[userKey]
 
       if (!user.isActive) {
-
+        return { success: false, error: 'Account is inactive' }
       }
 
       const token = generateToken(user.id, user.role)
@@ -96,37 +105,37 @@ export const authAPI = {
         userId: user.id,
         role: user.role,
         lastAccessAt: new Date().toISOString()
-        
+      })
 
       return {
         success: true,
-      await wi
+        token,
         user: {
-      teamMembers.push
+          id: user.id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
           avatar: user.avatar,
-        createdAt: new Date().toISOString()
+          emailVerified: user.emailVerified || false
         }
-
+      }
     } catch (error) {
-        token,
+      console.error('Login error:', error)
       return { success: false, error: 'Login failed' }
-     
+    }
   },
 
   async register(
-        user: {
+    email: string,
     password: string,
     firstName: string,
     lastName: string,
-    role: UserRole = 'user'
+    role: UserRole = 'sales'
   ): Promise<RegisterResponse> {
     try {
       const usersData = await spark.kv.get<Record<string, any>>('auth-users') || {}
-    }
+      
       const existingUser = Object.values(usersData).find(
         (user: any) => user.email === email
       )
@@ -140,13 +149,14 @@ export const authAPI = {
       
       usersData[userId] = {
         id: userId,
-      return {
+        email,
+        passwordHash: hashedPassword,
         firstName,
         lastName,
         role,
-          lastName: user.lastName,
+        avatar: undefined,
         isActive: true,
-          emailVerified: user
+        emailVerified: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -154,7 +164,7 @@ export const authAPI = {
       await spark.kv.set('auth-users', usersData)
 
       const teamMembers = await spark.kv.get<any[]>('team-members') || []
-      return { success: 
+      teamMembers.push({
         id: userId,
         email,
         firstName,
@@ -162,7 +172,7 @@ export const authAPI = {
         role,
         isActive: true,
         emailVerified: false,
-      }
+        invitedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       })
       await spark.kv.set('team-members', teamMembers)
@@ -180,17 +190,17 @@ export const authAPI = {
         token,
         user: {
           id: userId,
-      if (!users
+          email,
           firstName,
           lastName,
           role,
-        return user.passwordRe
+          emailVerified: false
         }
-
+      }
     } catch (error) {
       console.error('Registration error:', error)
       return { success: false, error: 'Registration failed' }
-     
+    }
   },
 
   async validateSession(token: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
@@ -212,17 +222,17 @@ export const authAPI = {
       })
 
       return {
-
+        success: true,
         user: {
-      }
+          id: user.id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-
+          role: user.role,
           avatar: user.avatar,
           emailVerified: user.emailVerified || false
         }
-       
+      }
     } catch (error) {
       console.error('Session validation error:', error)
       return { success: false, error: 'Session validation failed' }
@@ -236,23 +246,23 @@ export const authAPI = {
     } catch (error) {
       console.error('Logout error:', error)
       return { success: false }
-
+    }
   },
 
   async requestPasswordReset(email: string): Promise<PasswordResetResponse> {
-
+    try {
       const usersData = await spark.kv.get<Record<string, any>>('auth-users')
       if (!usersData) {
         return { success: false, error: 'User not found' }
-
+      }
 
       const userKey = Object.keys(usersData).find(key => usersData[key].email === email)
       if (!userKey) {
-
+        return { success: false, error: 'User not found' }
       }
 
       const resetToken = btoa(`${email}-${Date.now()}`)
-
+      const resetExpires = Date.now() + 60 * 60 * 1000
 
       usersData[userKey].passwordResetToken = resetToken
       usersData[userKey].passwordResetExpires = resetExpires
@@ -266,7 +276,7 @@ export const authAPI = {
       console.error('Password reset request error:', error)
       return { success: false, error: 'Password reset request failed' }
     }
-
+  },
 
   async resetPassword(token: string, newPassword: string): Promise<PasswordResetResponse> {
     try {
@@ -287,62 +297,55 @@ export const authAPI = {
 
       const newHash = await hashPassword(newPassword)
 
+      usersData[userKey].passwordHash = newHash
+      delete usersData[userKey].passwordResetToken
+      delete usersData[userKey].passwordResetExpires
+      usersData[userKey].updatedAt = new Date().toISOString()
 
+      await spark.kv.set('auth-users', usersData)
 
+      return { success: true }
+    } catch (error) {
+      console.error('Password reset error:', error)
+      return { success: false, error: 'Password reset failed' }
+    }
+  },
 
+  async verifyEmail(token: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const usersData = await spark.kv.get<Record<string, any>>('auth-users')
+      if (!usersData) {
+        return { success: false, error: 'Invalid verification token' }
+      }
 
+      const userKey = Object.keys(usersData).find(key => {
+        const user = usersData[key]
+        return user.emailVerificationToken === token && 
+               user.emailVerificationExpires > Date.now()
+      })
 
+      if (!userKey) {
+        return { success: false, error: 'Invalid or expired verification token' }
+      }
 
+      usersData[userKey].emailVerified = true
+      delete usersData[userKey].emailVerificationToken
+      delete usersData[userKey].emailVerificationExpires
+      usersData[userKey].updatedAt = new Date().toISOString()
 
+      await spark.kv.set('auth-users', usersData)
 
+      const teamMembers = await spark.kv.get<any[]>('team-members') || []
+      const memberIndex = teamMembers.findIndex(m => m.id === usersData[userKey].id)
+      if (memberIndex !== -1) {
+        teamMembers[memberIndex].emailVerified = true
+        await spark.kv.set('team-members', teamMembers)
+      }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      return { success: true }
+    } catch (error) {
+      console.error('Email verification error:', error)
+      return { success: false, error: 'Email verification failed' }
+    }
+  }
+}
