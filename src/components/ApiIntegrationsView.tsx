@@ -1,15 +1,35 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { Key, Lightning, PlugsConnected, Book, Terminal, ShieldCheck } from '@phosphor-icons/react'
 import { useLanguage } from '@/lib/language-context'
 import { useAuth } from '@/lib/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import ApiKeysManager from '@/components/ApiKeysManager'
-import WebhooksManager from '@/components/WebhooksManager'
-import IntegrationsManager from '@/components/IntegrationsManager'
-import ApiDocumentation from '@/components/ApiDocumentation'
-import ApiPlayground from '@/components/ApiPlayground'
-import ApiAuthTester from '@/components/ApiAuthTester'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent } from '@/components/ui/card'
 import PermissionGuard from '@/components/PermissionGuard'
+
+const ApiKeysManager = lazy(() => import('@/components/ApiKeysManager'))
+const WebhooksManager = lazy(() => import('@/components/WebhooksManager'))
+const IntegrationsManager = lazy(() => import('@/components/IntegrationsManager'))
+const ApiDocumentation = lazy(() => import('@/components/ApiDocumentation'))
+const ApiPlayground = lazy(() => import('@/components/ApiPlayground'))
+const ApiAuthTester = lazy(() => import('@/components/ApiAuthTester'))
+
+function TabLoadingSkeleton() {
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <div className="space-y-2 pt-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ApiIntegrationsView() {
   const { t } = useLanguage()
@@ -57,27 +77,39 @@ export default function ApiIntegrationsView() {
         </TabsList>
 
         <TabsContent value="api-keys">
-          <ApiKeysManager />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <ApiKeysManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="webhooks">
-          <WebhooksManager />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <WebhooksManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="integrations">
-          <IntegrationsManager />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <IntegrationsManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="auth-tester">
-          <ApiAuthTester />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <ApiAuthTester />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="playground">
-          <ApiPlayground />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <ApiPlayground />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="docs">
-          <ApiDocumentation />
+          <Suspense fallback={<TabLoadingSkeleton />}>
+            <ApiDocumentation />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

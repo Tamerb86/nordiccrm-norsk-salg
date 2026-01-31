@@ -1,24 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Users, ChartBar, Target, ListChecks, House, EnvelopeSimple, PlugsConnected, UserCircleGear } from '@phosphor-icons/react'
 import { useLanguage } from '@/lib/language-context'
 import { useAuth } from '@/lib/auth-context'
 import { canAccessResource } from '@/lib/role-permissions'
-import Dashboard from '@/components/Dashboard'
-import ContactsView from '@/components/ContactsView'
-import PipelineView from '@/components/PipelineView'
-import TasksView from '@/components/TasksView'
-import EmailsView from '@/components/EmailsView'
-import ApiIntegrationsView from '@/components/ApiIntegrationsView'
-import TeamManagementView from '@/components/TeamManagementView'
-import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
-import LoginForm from '@/components/LoginForm'
-import ForgotPasswordForm from '@/components/ForgotPasswordForm'
-import ResetPasswordForm from '@/components/ResetPasswordForm'
-import EmailVerification from '@/components/EmailVerification'
 import EmailVerificationBanner from '@/components/EmailVerificationBanner'
 import UserMenu from '@/components/UserMenu'
 import Footer from '@/components/Footer'
 import { Toaster } from '@/components/ui/sonner'
+import ScheduledEmailsManager from '@/components/ScheduledEmailsManager'
+import { ViewLoadingSkeleton, AuthLoadingSkeleton } from '@/components/LoadingSkeleton'
+
+const Dashboard = lazy(() => import('@/components/Dashboard'))
+const ContactsView = lazy(() => import('@/components/ContactsView'))
+const PipelineView = lazy(() => import('@/components/PipelineView'))
+const TasksView = lazy(() => import('@/components/TasksView'))
+const EmailsView = lazy(() => import('@/components/EmailsView'))
+const ApiIntegrationsView = lazy(() => import('@/components/ApiIntegrationsView'))
+const TeamManagementView = lazy(() => import('@/components/TeamManagementView'))
+const LoginForm = lazy(() => import('@/components/LoginForm'))
+const ForgotPasswordForm = lazy(() => import('@/components/ForgotPasswordForm'))
+const ResetPasswordForm = lazy(() => import('@/components/ResetPasswordForm'))
+const EmailVerification = lazy(() => import('@/components/EmailVerification'))
 
 type View = 'dashboard' | 'contacts' | 'pipeline' | 'tasks' | 'emails' | 'api' | 'team'
 type AuthView = 'login' | 'forgot-password' | 'reset-password' | 'verify-email'
@@ -59,39 +61,41 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    if (authView === 'forgot-password') {
-      return <ForgotPasswordForm onBack={() => setAuthView('login')} />
-    }
+    return (
+      <Suspense fallback={<AuthLoadingSkeleton />}>
+        {authView === 'forgot-password' && (
+          <ForgotPasswordForm onBack={() => setAuthView('login')} />
+        )}
 
-    if (authView === 'reset-password' && resetToken) {
-      return (
-        <ResetPasswordForm
-          token={resetToken}
-          onSuccess={() => {
-            setAuthView('login')
-            setResetToken(null)
-          }}
-          onBack={() => {
-            setAuthView('login')
-            setResetToken(null)
-          }}
-        />
-      )
-    }
+        {authView === 'reset-password' && resetToken && (
+          <ResetPasswordForm
+            token={resetToken}
+            onSuccess={() => {
+              setAuthView('login')
+              setResetToken(null)
+            }}
+            onBack={() => {
+              setAuthView('login')
+              setResetToken(null)
+            }}
+          />
+        )}
 
-    if (authView === 'verify-email' && verifyToken) {
-      return (
-        <EmailVerification
-          token={verifyToken}
-          onSuccess={() => {
-            setAuthView('login')
-            setVerifyToken(null)
-          }}
-        />
-      )
-    }
+        {authView === 'verify-email' && verifyToken && (
+          <EmailVerification
+            token={verifyToken}
+            onSuccess={() => {
+              setAuthView('login')
+              setVerifyToken(null)
+            }}
+          />
+        )}
 
-    return <LoginForm onForgotPassword={() => setAuthView('forgot-password')} />
+        {authView === 'login' && (
+          <LoginForm onForgotPassword={() => setAuthView('forgot-password')} />
+        )}
+      </Suspense>
+    )
   }
 
   const allNavItems = [
@@ -107,6 +111,32 @@ function App() {
   const navItems = allNavItems.filter(item => 
     user ? canAccessResource(user.role as any, item.resource) : false
   )
+
+  const preloadView = (viewId: View) => {
+    switch (viewId) {
+      case 'dashboard':
+        import('@/components/Dashboard')
+        break
+      case 'contacts':
+        import('@/components/ContactsView')
+        break
+      case 'pipeline':
+        import('@/components/PipelineView')
+        break
+      case 'tasks':
+        import('@/components/TasksView')
+        break
+      case 'emails':
+        import('@/components/EmailsView')
+        break
+      case 'api':
+        import('@/components/ApiIntegrationsView')
+        break
+      case 'team':
+        import('@/components/TeamManagementView')
+        break
+    }
+  }
 
   return (
     <div className="min-h-screen bg-secondary flex flex-col">
@@ -132,6 +162,7 @@ function App() {
                   <button
                     key={item.id}
                     onClick={() => setCurrentView(item.id)}
+                    onMouseEnter={() => preloadView(item.id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                       currentView === item.id
                         ? 'bg-primary-foreground/20 text-primary-foreground'
@@ -165,13 +196,15 @@ function App() {
       <main className="container mx-auto px-4 py-6 flex-1">
         {user && <EmailVerificationBanner userId={user.id} />}
         
-        {currentView === 'dashboard' && <Dashboard />}
-        {currentView === 'contacts' && <ContactsView />}
-        {currentView === 'pipeline' && <PipelineView />}
-        {currentView === 'tasks' && <TasksView />}
-        {currentView === 'emails' && <EmailsView />}
-        {currentView === 'api' && <ApiIntegrationsView />}
-        {currentView === 'team' && <TeamManagementView />}
+        <Suspense fallback={<ViewLoadingSkeleton />}>
+          {currentView === 'dashboard' && <Dashboard />}
+          {currentView === 'contacts' && <ContactsView />}
+          {currentView === 'pipeline' && <PipelineView />}
+          {currentView === 'tasks' && <TasksView />}
+          {currentView === 'emails' && <EmailsView />}
+          {currentView === 'api' && <ApiIntegrationsView />}
+          {currentView === 'team' && <TeamManagementView />}
+        </Suspense>
       </main>
 
       <Footer />

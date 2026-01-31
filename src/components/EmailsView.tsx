@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { PaperPlaneRight, Repeat, Clock } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useKV } from '@github/spark/hooks'
@@ -6,13 +6,28 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useLanguage } from '@/lib/language-context'
 import { formatDateTime, formatRecurrencePattern } from '@/lib/helpers'
 import type { Email } from '@/lib/types'
-import EmailComposer from '@/components/EmailComposer'
-import EmailHistory from '@/components/EmailHistory'
-import EmailTemplatesManager from '@/components/EmailTemplatesManager'
-import CustomTemplateVariablesManager from '@/components/CustomTemplateVariablesManager'
+
+const EmailComposer = lazy(() => import('@/components/EmailComposer'))
+const EmailHistory = lazy(() => import('@/components/EmailHistory'))
+const EmailTemplatesManager = lazy(() => import('@/components/EmailTemplatesManager'))
+const CustomTemplateVariablesManager = lazy(() => import('@/components/CustomTemplateVariablesManager'))
+
+function EmailTabLoadingSkeleton() {
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-4">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function EmailsView() {
   const { t } = useLanguage()
@@ -145,22 +160,30 @@ export default function EmailsView() {
         </TabsList>
 
         <TabsContent value="history" className="mt-6">
-          <EmailHistory />
+          <Suspense fallback={<EmailTabLoadingSkeleton />}>
+            <EmailHistory />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="templates" className="mt-6">
-          <EmailTemplatesManager />
+          <Suspense fallback={<EmailTabLoadingSkeleton />}>
+            <EmailTemplatesManager />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="variables" className="mt-6">
-          <CustomTemplateVariablesManager />
+          <Suspense fallback={<EmailTabLoadingSkeleton />}>
+            <CustomTemplateVariablesManager />
+          </Suspense>
         </TabsContent>
       </Tabs>
 
-      <EmailComposer
-        isOpen={isComposerOpen}
-        onClose={() => setIsComposerOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <EmailComposer
+          isOpen={isComposerOpen}
+          onClose={() => setIsComposerOpen(false)}
+        />
+      </Suspense>
     </motion.div>
   )
 }
