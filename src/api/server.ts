@@ -66,10 +66,61 @@ export class ApiServer {
     for (const webhook of webhooks) {
       if (webhook.isActive && webhook.events?.includes(event)) {
         try {
-          // هذا ليس signature أمني — مجرد marker
           const marker = btoa(unescape(encodeURIComponent(JSON.stringify({ event, ts: Date.now() }))))
 
           await fetch(webhook.url, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json
+              'Content-Type': 'application/json',
+              'X-Webhook-Signature': marker
+            },
+            body: JSON.stringify({ event, data: payload, timestamp: Date.now() })
+          })
+        } catch (error) {
+          console.error(`Webhook error for ${webhook.url}:`, error)
+        }
+      }
+    }
+  }
+
+  async handleRequest(method: string, path: string, apiKey: string, body?: any): Promise<{ status: number; data: any }> {
+    const normalizedMethod = this.normalizeMethod(method)
+
+    if (!(await this.validateApiKey(apiKey))) {
+      return {
+        status: 401,
+        data: {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid API key'
+          }
+        }
+      }
+    }
+
+    const pathParts = path.split('?')
+    const endpoint = pathParts[0]
+    const resource = endpoint.split('/')[3]
+
+    if (!(await this.checkPermission(apiKey, resource, normalizedMethod.toLowerCase()))) {
+      return {
+        status: 403,
+        data: {
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Insufficient permissions'
+          }
+        }
+      }
+    }
+
+    return {
+      status: 200,
+      data: {
+        data: body ? { id: this.makeId(), ...body } : []
+      }
+    }
+  }
+}
+
+export const apiServer = new ApiServer()
