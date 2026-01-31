@@ -1,28 +1,26 @@
 import crypto from 'crypto'
 
-const spark = window.spark
-
 interface ApiKeyData {
-  id: string
-  key: string
-  permissions: string[]
-  resourcePermissions?: Array<{ resource: string; actions: string[] }>
-  isActive: boolean
+  key: strin
+  resourcePer
   lastUsedAt?: string
-}
 
-interface WebhookData {
   id: string
-  url: string
   events: string[]
-  secret: string
-  isActive: boolean
-}
+ 
 
-const MOCK_API_KEY = 'sk_test_mock_development_key'
 
-export class ApiServer {
-  private baseUrl = '/api/v1'
+  private ba
+  private asy
+    
+    const key = 
+    if (key) {
+ 
+
+    return false
+
+    apiKey: string,
+    action: string
 
   private async validateApiKey(apiKey: string): Promise<boolean> {
     if (apiKey === MOCK_API_KEY) return true
@@ -54,15 +52,15 @@ export class ApiServer {
     if (key.permissions.includes('admin')) return true
     
     if (key.resourcePermissions) {
-      const resourcePerm = key.resourcePermissions.find(r => 
+        const signature = crypto
         r.resource === resource || r.resource === 'all'
-      )
+       
       if (resourcePerm && resourcePerm.actions.includes(action)) {
         return true
       }
-    }
+     
     
-    return false
+        })
   }
 
   private async triggerWebhooks(event: string, data: any) {
@@ -72,13 +70,13 @@ export class ApiServer {
     )
 
     for (const webhook of activeWebhooks) {
-      try {
+
         const payload = {
           event,
           timestamp: new Date().toISOString(),
           data,
         }
-        
+    if (
         const signature = crypto
           .createHmac('sha256', webhook.secret)
           .update(JSON.stringify(payload))
@@ -86,41 +84,41 @@ export class ApiServer {
 
         await fetch(webhook.url, {
           method: 'POST',
-          headers: {
+        return await
             'Content-Type': 'application/json',
             'X-Webhook-Signature': `sha256=${signature}`,
           },
           body: JSON.stringify(payload),
         })
-      } catch (error) {
+          status: 404,
         console.error(`Webhook delivery failed for ${webhook.url}:`, error)
       }
     }
-  }
+   
 
-  async handleRequest(
+            code: 'INT
     method: string,
     path: string,
     headers: Record<string, string>,
-    body?: any
+  }
   ): Promise<{ status: number; data: any }> {
     const authHeader = headers['authorization'] || headers['Authorization']
     const apiKey = authHeader?.replace('Bearer ', '')
 
     if (!apiKey) {
-      return {
+
         status: 401,
         data: { error: { code: 'UNAUTHORIZED', message: 'API-nøkkel mangler' } },
       }
-    }
 
-    const isValid = await this.validateApiKey(apiKey)
+
+
     if (!isValid) {
-      return {
+      if (!has
         status: 401,
         data: { error: { code: 'UNAUTHORIZED', message: 'Ugyldig API-nøkkel' } },
       }
-    }
+     
 
     const pathWithoutBase = path.replace(this.baseUrl, '')
     const parts = pathWithoutBase.split('/').filter(Boolean)
@@ -130,27 +128,27 @@ export class ApiServer {
         return await this.handleContactsRequest(method, parts, body, apiKey)
       } else if (parts[0] === 'deals') {
         return await this.handleDealsRequest(method, parts, body, apiKey)
-      } else if (parts[0] === 'tasks') {
+        return { status: 403, data: { er
         return await this.handleTasksRequest(method, parts, body, apiKey)
-      } else if (parts[0] === 'emails') {
+      const contact = contacts.find(c => 
         return await this.handleEmailsRequest(method, parts, body, apiKey)
-      } else {
+      }
         return {
-          status: 404,
+    }
           data: { error: { code: 'NOT_FOUND', message: 'Endepunkt ikke funnet' } },
         }
       }
     } catch (error) {
       return {
-        status: 500,
+      if (index === 
         data: {
           error: {
             code: 'INTERNAL_ERROR',
             message: error instanceof Error ? error.message : 'En feil oppstod',
           },
-        },
+        up
       }
-    }
+     
   }
 
   private async handleContactsRequest(
@@ -168,15 +166,15 @@ export class ApiServer {
       }
 
       return { status: 200, data: { data: contacts, pagination: { total: contacts.length } } }
-    }
+  }
 
     if (method === 'POST' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'write')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
 
-      const newContact = {
+
+      if (!hasPermission) 
         id: `cnt_${Date.now()}${Math.random().toString(36).substr(2, 9)}`,
         ...body,
         createdAt: new Date().toISOString(),
@@ -188,7 +186,7 @@ export class ApiServer {
       await this.triggerWebhooks('contact.created', newContact)
 
       return { status: 201, data: { data: newContact } }
-    }
+     
 
     if (method === 'GET' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'read')
@@ -202,13 +200,13 @@ export class ApiServer {
       }
 
       return { status: 200, data: { data: contact } }
-    }
+     
 
     if (method === 'PUT' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'write')
-      if (!hasPermission) {
+
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
+       
 
       const index = contacts.findIndex(c => c.id === parts[1])
       if (index === -1) {
@@ -220,7 +218,7 @@ export class ApiServer {
         ...body,
         id: contacts[index].id,
         createdAt: contacts[index].createdAt,
-        updatedAt: new Date().toISOString(),
+    if (method === 'GET' && parts.length ===
       }
 
       contacts[index] = updatedContact
@@ -228,7 +226,7 @@ export class ApiServer {
       await this.triggerWebhooks('contact.updated', updatedContact)
 
       return { status: 200, data: { data: updatedContact } }
-    }
+     
 
     if (method === 'DELETE' && parts.length === 2) {
       const hasPermission = await this.checkPermission(apiKey, 'contacts', 'delete')
@@ -236,7 +234,7 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
 
-      const index = contacts.findIndex(c => c.id === parts[1])
+      await spark.kv.set('tasks', tasks)
       if (index === -1) {
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'Kontakt ikke funnet' } } }
       }
@@ -246,25 +244,25 @@ export class ApiServer {
       await spark.kv.set('contacts', contacts)
       await this.triggerWebhooks('contact.deleted', deletedContact)
 
-      return { status: 204, data: null }
+      }
     }
 
     return { status: 405, data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke støttet' } } }
-  }
+   
 
-  private async handleDealsRequest(
+      await spark.kv.set('tasks', t
     method: string,
-    parts: string[],
+      return { statu
     body: any,
-    apiKey: string
+    return { statu
   ): Promise<{ status: number; data: any }> {
-    const deals = await spark.kv.get<any[]>('deals') || []
+  private async handleEmailsRequest(
 
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'deals', 'read')
-      if (!hasPermission) {
+    const emails = await sp
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
+      c
 
       return { status: 200, data: { data: deals, pagination: { total: deals.length } } }
     }
@@ -273,14 +271,14 @@ export class ApiServer {
       const hasPermission = await this.checkPermission(apiKey, 'deals', 'write')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
+       
 
       const newDeal = {
         id: `deal_${Date.now()}${Math.random().toString(36).substr(2, 9)}`,
         ...body,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+
 
       deals.push(newDeal)
       await spark.kv.set('deals', deals)
@@ -293,7 +291,7 @@ export class ApiServer {
       const hasPermission = await this.checkPermission(apiKey, 'deals', 'write')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
+       
 
       const index = deals.findIndex(d => d.id === parts[1])
       if (index === -1) {
@@ -312,29 +310,29 @@ export class ApiServer {
       await this.triggerWebhooks('deal.stage_changed', {
         ...deals[index],
         previousStage: oldStage,
-      })
+
 
       return { status: 200, data: { data: deals[index] } }
     }
 
     return { status: 405, data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke støttet' } } }
-  }
+
 
   private async handleTasksRequest(
     method: string,
-    parts: string[],
+
     body: any,
-    apiKey: string
+
   ): Promise<{ status: number; data: any }> {
     const tasks = await spark.kv.get<any[]>('tasks') || []
 
-    if (method === 'GET' && parts.length === 1) {
+
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'read')
       if (!hasPermission) {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
 
-      return { status: 200, data: { data: tasks, pagination: { total: tasks.length } } }
+
     }
 
     if (method === 'POST' && parts.length === 1) {
@@ -346,7 +344,7 @@ export class ApiServer {
       const newTask = {
         id: `task_${Date.now()}${Math.random().toString(36).substr(2, 9)}`,
         completed: false,
-        ...body,
+
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -356,13 +354,13 @@ export class ApiServer {
       await this.triggerWebhooks('task.created', newTask)
 
       return { status: 201, data: { data: newTask } }
-    }
+
 
     if (method === 'PATCH' && parts.length === 3 && parts[2] === 'complete') {
       const hasPermission = await this.checkPermission(apiKey, 'tasks', 'write')
-      if (!hasPermission) {
+
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
-      }
+
 
       const index = tasks.findIndex(t => t.id === parts[1])
       if (index === -1) {
@@ -370,23 +368,23 @@ export class ApiServer {
       }
 
       tasks[index] = {
-        ...tasks[index],
+
         completed: true,
         completedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+
 
       await spark.kv.set('tasks', tasks)
       await this.triggerWebhooks('task.completed', tasks[index])
 
       return { status: 200, data: { data: tasks[index] } }
-    }
+
 
     return { status: 405, data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke støttet' } } }
   }
 
   private async handleEmailsRequest(
-    method: string,
+
     parts: string[],
     body: any,
     apiKey: string
@@ -396,7 +394,7 @@ export class ApiServer {
     if (method === 'GET' && parts.length === 1) {
       const hasPermission = await this.checkPermission(apiKey, 'emails', 'read')
       if (!hasPermission) {
-        return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
+
       }
 
       return { status: 200, data: { data: emails, pagination: { total: emails.length } } }
@@ -408,13 +406,13 @@ export class ApiServer {
         return { status: 403, data: { error: { code: 'FORBIDDEN', message: 'Ingen tilgang' } } }
       }
 
-      const newEmail = {
+
         id: `email_${Date.now()}${Math.random().toString(36).substr(2, 9)}`,
-        from: 'crm@example.no',
+
         status: body.scheduledAt ? 'scheduled' : 'sent',
         trackingEnabled: body.trackingEnabled || false,
         openCount: 0,
-        clickCount: 0,
+
         ...body,
         sentAt: body.scheduledAt ? undefined : new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -424,9 +422,9 @@ export class ApiServer {
       emails.push(newEmail)
       await spark.kv.set('emails', emails)
       
-      if (!body.scheduledAt) {
+
         await this.triggerWebhooks('email.sent', newEmail)
-      }
+
 
       return { status: 201, data: { data: newEmail } }
     }
@@ -438,17 +436,17 @@ export class ApiServer {
       }
 
       const email = emails.find(e => e.id === parts[1])
-      if (!email) {
+
         return { status: 404, data: { error: { code: 'NOT_FOUND', message: 'E-post ikke funnet' } } }
-      }
+
 
       const stats = {
         id: email.id,
         openRate: email.openCount > 0 ? 100 : 0,
         clickRate: email.clickCount > 0 ? 50 : 0,
-        openCount: email.openCount,
+
         clickCount: email.clickCount,
-        lastOpenedAt: email.openedAt,
+
       }
 
       return { status: 200, data: stats }
@@ -456,6 +454,6 @@ export class ApiServer {
 
     return { status: 405, data: { error: { code: 'METHOD_NOT_ALLOWED', message: 'Metode ikke støttet' } } }
   }
-}
+
 
 export const apiServer = new ApiServer()
