@@ -35,10 +35,10 @@ export class ApiClient {
       }
 
       const result = await apiServer.handleRequest(
+        body,
         method,
         `${this.baseUrl}${path}`,
-        headers,
-        body
+        headers
       )
 
       if (result.status >= 400) {
